@@ -38,7 +38,7 @@ POST /api/invoices (PDF)
 | Area | Technology |
 |---|---|
 | Core | Java 21 (records, virtual threads), Spring Boot 3.5 |
-| AI | Spring AI 1.0 (OpenAI chat model, structured output) |
+| AI | Spring AI 1.0, structured output, any OpenAI-compatible API (OpenAI, Google Gemini) |
 | Persistence | Spring Data JPA, PostgreSQL 17, Flyway |
 | PDF | Apache PDFBox 3 |
 | API | REST, OpenAPI / Swagger UI, RFC 9457 problem details |
@@ -61,7 +61,7 @@ Interactive docs: `http://localhost:8080/swagger-ui.html`
 Requirements: Java 21, Docker.
 
 ```bash
-cp .env.example .env              # add your OPENAI_API_KEY
+cp .env.example .env              # add your API key (OpenAI or Gemini)
 docker compose up -d postgres     # start PostgreSQL
 ./mvnw spring-boot:run            # start the API on :8080
 ```

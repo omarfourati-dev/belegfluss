@@ -67,11 +67,18 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          # Provider settings are not secret, they come from repository variables.
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_COMPLETIONS_PATH: ${{ vars.AI_COMPLETIONS_PATH }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
         run: |
           {
             printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
             [ -n "$OPENAI_API_KEY" ] && printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY"
             [ -n "$UPLOAD_TOKEN" ] && printf 'UPLOAD_TOKEN=%s\n' "$UPLOAD_TOKEN"
+            [ -n "$AI_BASE_URL" ] && printf 'AI_BASE_URL=%s\n' "$AI_BASE_URL"
+            [ -n "$AI_COMPLETIONS_PATH" ] && printf 'AI_COMPLETIONS_PATH=%s\n' "$AI_COMPLETIONS_PATH"
+            [ -n "$AI_MODEL" ] && printf 'AI_MODEL=%s\n' "$AI_MODEL"
             true
           } > "$DEPLOY_DIR/.env"
           chmod 600 "$DEPLOY_DIR/.env"

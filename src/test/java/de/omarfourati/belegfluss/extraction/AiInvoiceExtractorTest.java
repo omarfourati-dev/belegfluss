@@ -40,14 +40,26 @@ class AiInvoiceExtractorTest {
     }
 
     @Test
-    void wrapsProviderErrors() {
+    void providerErrorBodyIsNeverExposed() {
         ChatModel failing = prompt -> {
-            throw new IllegalStateException("401 Unauthorized");
+            throw new IllegalStateException(
+                    "HTTP 401 - {\"error\":{\"message\":\"Incorrect API key provided: sk-abc***xyz\"}}");
         };
 
         assertThatThrownBy(() -> new AiInvoiceExtractor(ChatClient.builder(failing)).extract("text"))
                 .isInstanceOf(ExtractionException.class)
-                .hasMessageContaining("401 Unauthorized");
+                .hasMessage("AI provider rejected the API key (HTTP 401)")
+                .message().doesNotContain("sk-");
+    }
+
+    @Test
+    void mapsOtherProviderErrorsToGenericMessages() {
+        assertThat(AiInvoiceExtractor.safeMessage(new IllegalStateException("HTTP 429 - slow down")))
+                .isEqualTo("AI provider rate limit reached (HTTP 429)");
+        assertThat(AiInvoiceExtractor.safeMessage(new IllegalStateException("HTTP 503 - body")))
+                .isEqualTo("AI provider request failed (HTTP 503)");
+        assertThat(AiInvoiceExtractor.safeMessage(new IllegalStateException("connection reset")))
+                .isEqualTo("AI provider request failed");
     }
 
     private static ChatResponse reply(String json) {

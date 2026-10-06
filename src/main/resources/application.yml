@@ -29,9 +29,14 @@ spring:
       # Read from the environment, never committed. The placeholder lets the app
       # start without a key; extraction then fails with a clear error.
       api-key: ${OPENAI_API_KEY:not-configured}
+      # Any OpenAI-compatible API works, e.g. Google Gemini:
+      #   AI_BASE_URL=https://generativelanguage.googleapis.com
+      #   AI_COMPLETIONS_PATH=/v1beta/openai/chat/completions  AI_MODEL=gemini-2.5-flash
+      base-url: ${AI_BASE_URL:https://api.openai.com}
       chat:
+        completions-path: ${AI_COMPLETIONS_PATH:/v1/chat/completions}
         options:
-          model: ${OPENAI_MODEL:gpt-4o-mini}
+          model: ${AI_MODEL:gpt-4o-mini}
           temperature: 0
 
 belegfluss:
