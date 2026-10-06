@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: belegfluss
+      POSTGRES_USER: belegfluss
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-belegfluss}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U belegfluss"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    profiles: ["app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/belegfluss
+      DATABASE_USER: belegfluss
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-belegfluss}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-not-configured}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+volumes:
+  pgdata:

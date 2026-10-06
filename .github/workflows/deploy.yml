@@ -1,0 +1,108 @@
+name: CI & Deploy – belegfluss.omarfourati.de
+
+# No pull_request trigger: code from forks must never run on the self-hosted runner (public repo).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: /home/belegfluss
+
+jobs:
+  test:
+    name: Tests
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to Production
+    runs-on: self-hosted
+    environment: production
+    needs: [test]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Sync code to deploy directory
+        run: |
+          mkdir -p "$DEPLOY_DIR"
+          rsync -rlD --no-owner --no-group --delete \
+            --exclude='.git' \
+            --exclude='target' \
+            --exclude='.env' \
+            "$GITHUB_WORKSPACE/" "$DEPLOY_DIR/"
+
+      - name: Ensure Docker network 'web' exists
+        run: docker network create web 2>/dev/null || echo "Network 'web' already exists."
+
+      - name: Create database role and database
+        # The password is handed over as an inherited environment variable (-e without value) and read
+        # with \getenv, so it never appears in a command line, process list or log.
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          if [ -z "$DB_PASSWORD" ]; then echo "::error::Secret DB_PASSWORD is missing"; exit 1; fi
+          docker exec -i -e DB_PASSWORD zentrades-postgres psql -v ON_ERROR_STOP=1 -U zentrades -d postgres <<'SQL'
+          \getenv pw DB_PASSWORD
+          SELECT format('CREATE ROLE belegfluss LOGIN PASSWORD %L', :'pw')
+            WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'belegfluss') \gexec
+          SELECT format('ALTER ROLE belegfluss PASSWORD %L', :'pw') \gexec
+          SELECT 'CREATE DATABASE belegfluss OWNER belegfluss'
+            WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'belegfluss') \gexec
+          SQL
+
+      - name: Write .env
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+        run: |
+          {
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            [ -n "$OPENAI_API_KEY" ] && printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY"
+            [ -n "$UPLOAD_TOKEN" ] && printf 'UPLOAD_TOKEN=%s\n' "$UPLOAD_TOKEN"
+            true
+          } > "$DEPLOY_DIR/.env"
+          chmod 600 "$DEPLOY_DIR/.env"
+          if [ -z "$UPLOAD_TOKEN" ]; then
+            echo "::warning::Secret UPLOAD_TOKEN is missing - uploads are open to everyone"
+          fi
+
+      - name: Build image
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml build
+
+      - name: Start service
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 18); do
+            if [ "$(docker inspect --format='{{.State.Health.Status}}' belegfluss 2>/dev/null)" = "healthy" ]; then
+              echo "belegfluss is healthy."
+              exit 0
+            fi
+            echo "  Attempt $i/18 - waiting 10s..."
+            sleep 10
+          done
+          echo "belegfluss did not become healthy in time."
+          docker logs belegfluss --tail=80
+          exit 1
+
+      - name: Reload Caddy
+        run: docker compose -f /opt/caddy/docker-compose.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+      - name: Clean up dangling images
+        run: docker image prune -f

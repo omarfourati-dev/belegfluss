@@ -1,0 +1,56 @@
+package de.omarfourati.belegfluss.extraction;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.Prompt;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class AiInvoiceExtractorTest {
+
+    @Test
+    void mapsModelJsonToRecordAndSendsInvoiceText() {
+        AtomicReference<Prompt> sent = new AtomicReference<>();
+        ChatModel model = prompt -> {
+            sent.set(prompt);
+            return reply("""
+                    {"supplierName":"Muster Buerobedarf GmbH","invoiceNumber":"RE-2026-0042",
+                     "invoiceDate":"2026-10-01","dueDate":null,"netAmount":100.00,"vatAmount":19.00,
+                     "grossAmount":119.00,"currency":"EUR","iban":"DE89370400440532013000"}
+                    """);
+        };
+
+        ExtractedInvoice result = new AiInvoiceExtractor(ChatClient.builder(model)).extract("Rechnung RE-2026-0042");
+
+        assertThat(result.supplierName()).isEqualTo("Muster Buerobedarf GmbH");
+        assertThat(result.invoiceDate()).isEqualTo(LocalDate.of(2026, 10, 1));
+        assertThat(result.grossAmount()).isEqualByComparingTo(new BigDecimal("119.00"));
+        assertThat(result.dueDate()).isNull();
+        assertThat(sent.get().getContents()).contains("Rechnung RE-2026-0042").contains("Never guess");
+    }
+
+    @Test
+    void wrapsProviderErrors() {
+        ChatModel failing = prompt -> {
+            throw new IllegalStateException("401 Unauthorized");
+        };
+
+        assertThatThrownBy(() -> new AiInvoiceExtractor(ChatClient.builder(failing)).extract("text"))
+                .isInstanceOf(ExtractionException.class)
+                .hasMessageContaining("401 Unauthorized");
+    }
+
+    private static ChatResponse reply(String json) {
+        return new ChatResponse(List.of(new Generation(new AssistantMessage(json))));
+    }
+}

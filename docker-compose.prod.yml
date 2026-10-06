@@ -1,0 +1,29 @@
+# Production on the VPS (belegfluss.omarfourati.de). Used by .github/workflows/deploy.yml.
+# Shares the PostgreSQL server of the host (port 5433) and sits behind Caddy in the network "web".
+services:
+  belegfluss:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: belegfluss
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false   # written by the deploy from GitHub secrets
+    environment:
+      TZ: Europe/Berlin
+      DATABASE_URL: jdbc:postgresql://host.docker.internal:5433/belegfluss
+      DATABASE_USER: belegfluss
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-not-configured}
+      UPLOAD_TOKEN: ${UPLOAD_TOKEN:-}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 768m
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

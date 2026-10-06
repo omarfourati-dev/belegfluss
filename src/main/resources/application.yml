@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: belegfluss
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/belegfluss}
+    username: ${DATABASE_USER:belegfluss}
+    password: ${DATABASE_PASSWORD:belegfluss}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  ai:
+    # Only the chat model is used, skip the other OpenAI clients.
+    model:
+      audio:
+        speech: none
+        transcription: none
+      embedding: none
+      image: none
+      moderation: none
+    openai:
+      # Read from the environment, never committed. The placeholder lets the app
+      # start without a key; extraction then fails with a clear error.
+      api-key: ${OPENAI_API_KEY:not-configured}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o-mini}
+          temperature: 0
+
+belegfluss:
+  # When set, POST /api/** requires the header X-Upload-Token. Empty = open (local dev).
+  upload-token: ${UPLOAD_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

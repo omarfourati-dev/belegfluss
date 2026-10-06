@@ -1,0 +1,68 @@
+package de.omarfourati.belegfluss.invoice;
+
+import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
+import de.omarfourati.belegfluss.extraction.ExtractionException;
+import de.omarfourati.belegfluss.extraction.InvoiceExtractor;
+import de.omarfourati.belegfluss.extraction.PdfTextReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.UUID;
+import java.util.function.Consumer;
+
+/**
+ * Runs the extraction pipeline in the background. The slow AI call happens
+ * outside of any database transaction, so no connection is held while waiting.
+ */
+@Component
+public class InvoiceProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(InvoiceProcessor.class);
+
+    private final InvoiceRepository repository;
+    private final PdfTextReader pdfTextReader;
+    private final InvoiceExtractor extractor;
+    private final TransactionTemplate tx;
+
+    public InvoiceProcessor(InvoiceRepository repository, PdfTextReader pdfTextReader,
+                            InvoiceExtractor extractor, PlatformTransactionManager txManager) {
+        this.repository = repository;
+        this.pdfTextReader = pdfTextReader;
+        this.extractor = extractor;
+        this.tx = new TransactionTemplate(txManager);
+    }
+
+    @Async
+    @TransactionalEventListener
+    public void onInvoiceReceived(InvoiceReceivedEvent event) {
+        process(event.invoiceId());
+    }
+
+    void process(UUID invoiceId) {
+        byte[] pdf = tx.execute(status -> repository.findById(invoiceId)
+                .map(Invoice::getPdfContent)
+                .orElse(null));
+        if (pdf == null) {
+            log.warn("Invoice {} disappeared before processing", invoiceId);
+            return;
+        }
+
+        try {
+            ExtractedInvoice extracted = extractor.extract(pdfTextReader.read(pdf));
+            update(invoiceId, invoice -> invoice.applyExtraction(extracted));
+            log.info("Invoice {} extracted", invoiceId);
+        } catch (ExtractionException e) {
+            log.warn("Invoice {} failed: {}", invoiceId, e.getMessage());
+            update(invoiceId, invoice -> invoice.markFailed(e.getMessage()));
+        }
+    }
+
+    private void update(UUID invoiceId, Consumer<Invoice> change) {
+        tx.executeWithoutResult(status -> repository.findById(invoiceId).ifPresent(change));
+    }
+}
