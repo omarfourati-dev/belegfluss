@@ -38,6 +38,10 @@ belegfluss:
   # When set, POST /api/** requires the header X-Upload-Token. Empty = open (local dev).
   upload-token: ${UPLOAD_TOKEN:}
 
+server:
+  # Behind Caddy: trust X-Forwarded-* so redirects and links use https
+  forward-headers-strategy: framework
+
 management:
   endpoints:
     web:
