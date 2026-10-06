@@ -105,6 +105,20 @@ class InvoiceApiIntegrationTest {
     }
 
     @Test
+    void unexpectedErrorsDoNotLeaveInvoiceStuck() throws Exception {
+        when(extractor.extract(anyString())).thenThrow(new IllegalStateException("boom"));
+
+        mvc.perform(multipart("/api/invoices").file(pdf("rechnung.pdf", TestPdfs.sampleInvoice())))
+                .andExpect(status().isAccepted());
+
+        UUID id = repository.findAll().getFirst().getId();
+        awaitStatus(id, InvoiceStatus.FAILED);
+
+        mvc.perform(get("/api/invoices/{id}", id))
+                .andExpect(jsonPath("$.errorMessage").value("Unexpected processing error"));
+    }
+
+    @Test
     void rejectsFilesThatAreNotPdfs() throws Exception {
         mvc.perform(multipart("/api/invoices").file(pdf("notes.pdf", "just text".getBytes())))
                 .andExpect(status().isBadRequest())

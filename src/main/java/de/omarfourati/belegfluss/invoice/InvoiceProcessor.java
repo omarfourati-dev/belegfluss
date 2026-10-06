@@ -54,11 +54,18 @@ public class InvoiceProcessor {
 
         try {
             ExtractedInvoice extracted = extractor.extract(pdfTextReader.read(pdf));
+            if (extracted == null) {
+                throw new ExtractionException("Extractor returned no result");
+            }
             update(invoiceId, invoice -> invoice.applyExtraction(extracted));
             log.info("Invoice {} extracted", invoiceId);
         } catch (ExtractionException e) {
             log.warn("Invoice {} failed: {}", invoiceId, e.getMessage());
             update(invoiceId, invoice -> invoice.markFailed(e.getMessage()));
+        } catch (RuntimeException e) {
+            // Never leave an invoice stuck in RECEIVED
+            log.error("Invoice {} failed unexpectedly", invoiceId, e);
+            update(invoiceId, invoice -> invoice.markFailed("Unexpected processing error"));
         }
     }
 
