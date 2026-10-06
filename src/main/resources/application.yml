@@ -12,6 +12,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  mvc:
+    problemdetails:
+      enabled: true
   servlet:
     multipart:
       max-file-size: 10MB
@@ -40,8 +43,17 @@ spring:
           temperature: 0
 
 belegfluss:
-  # When set, POST /api/** requires the header X-Upload-Token. Empty = open (local dev).
-  upload-token: ${UPLOAD_TOKEN:}
+  jwt:
+    # HS256 signing key, at least 32 bytes. Empty = random key per start (local dev only).
+    secret: ${JWT_SECRET:}
+    validity: PT8H
+  # First admin, created on start if no admin exists yet.
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+  # Public read-only account for the live demo.
+  demo:
+    enabled: ${DEMO_ENABLED:false}
 
 server:
   # Behind Caddy: trust X-Forwarded-* so redirects and links use https

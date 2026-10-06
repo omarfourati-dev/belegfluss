@@ -22,6 +22,7 @@ public record InvoiceResponse(
         String currency,
         String iban,
         String errorMessage,
+        String decisionComment,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -41,6 +42,7 @@ public record InvoiceResponse(
                 invoice.getCurrency(),
                 invoice.getIban(),
                 invoice.getErrorMessage(),
+                invoice.getDecisionComment(),
                 invoice.getCreatedAt(),
                 invoice.getUpdatedAt());
     }

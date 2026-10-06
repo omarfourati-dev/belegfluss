@@ -66,7 +66,9 @@ jobs:
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
           # Provider settings are not secret, they come from repository variables.
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
           AI_COMPLETIONS_PATH: ${{ vars.AI_COMPLETIONS_PATH }}
@@ -75,15 +77,18 @@ jobs:
           {
             printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
             [ -n "$OPENAI_API_KEY" ] && printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY"
-            [ -n "$UPLOAD_TOKEN" ] && printf 'UPLOAD_TOKEN=%s\n' "$UPLOAD_TOKEN"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            [ -n "$ADMIN_EMAIL" ] && printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
+            [ -n "$ADMIN_PASSWORD" ] && printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
             [ -n "$AI_BASE_URL" ] && printf 'AI_BASE_URL=%s\n' "$AI_BASE_URL"
             [ -n "$AI_COMPLETIONS_PATH" ] && printf 'AI_COMPLETIONS_PATH=%s\n' "$AI_COMPLETIONS_PATH"
             [ -n "$AI_MODEL" ] && printf 'AI_MODEL=%s\n' "$AI_MODEL"
             true
           } > "$DEPLOY_DIR/.env"
           chmod 600 "$DEPLOY_DIR/.env"
-          if [ -z "$UPLOAD_TOKEN" ]; then
-            echo "::warning::Secret UPLOAD_TOKEN is missing - uploads are open to everyone"
+          if [ ${#JWT_SECRET} -lt 32 ]; then
+            echo "::error::Secret JWT_SECRET is missing or shorter than 32 characters"
+            exit 1
           fi
 
       - name: Build image

@@ -6,7 +6,10 @@ Small businesses receive supplier invoices as PDFs and still type supplier, invo
 amounts and IBAN into their accounting by hand. **Belegfluss** ("document flow") takes the PDF,
 lets an LLM extract the fields as structured data and prepares them for review and approval.
 
-Built with **Java 21** and **Spring Boot 3**, using **Spring AI** for structured LLM output.
+Built with **Java 21** and **Spring Boot 3**, using **Spring AI** for structured LLM output
+and **Spring Security** (JWT) for role-based access and a four-eyes approval workflow.
+
+**Live demo:** https://belegfluss.omarfourati.de – read-only login `demo@belegfluss.app` / `demo-belegfluss`
 
 ## How it works
 
@@ -33,6 +36,27 @@ POST /api/invoices (PDF)
 - The extractor sits behind an `InvoiceExtractor` interface, so the provider can be swapped
   and tests do not need an API key.
 
+## Roles and approval workflow
+
+```
+RECEIVED ──AI──► EXTRACTED ──approve──► APPROVED ──book──► BOOKED
+             └─► FAILED     └─reject──► REJECTED
+```
+
+| Role | Can do | Inherits |
+|---|---|---|
+| `VIEWER` | read invoices and history | – |
+| `EMPLOYEE` | upload invoices | VIEWER |
+| `APPROVER` | approve / reject (never their own upload) | EMPLOYEE |
+| `ACCOUNTANT` | book approved invoices | APPROVER |
+| `ADMIN` | create users | ACCOUNTANT |
+
+- **Four-eyes principle:** the person who uploaded an invoice cannot approve it.
+- **Audit trail:** every step is stored with actor and timestamp (`GET /api/invoices/{id}/history`).
+- Stateless JWT (HS256) issued by the API itself, validated as an OAuth2 resource server;
+  role hierarchy via Spring Security `RoleHierarchy`, checks with `@PreAuthorize`.
+- Passwords hashed with BCrypt; failed logins take the same time for known and unknown e-mails.
+
 ## Tech stack
 
 | Area | Technology |
@@ -41,20 +65,27 @@ POST /api/invoices (PDF)
 | AI | Spring AI 1.0, structured output, any OpenAI-compatible API (OpenAI, Google Gemini) |
 | Persistence | Spring Data JPA, PostgreSQL 17, Flyway |
 | PDF | Apache PDFBox 3 |
+| Security | Spring Security, OAuth2 resource server (JWT), BCrypt, role hierarchy |
 | API | REST, OpenAPI / Swagger UI, RFC 9457 problem details |
 | Operations | Actuator, Prometheus metrics, Docker (layered jar, non-root), GitHub Actions |
 | Tests | JUnit 5, AssertJ, Mockito, Testcontainers (real PostgreSQL), Awaitility |
 
 ## API
 
-| Method | Path | Description |
+| Method | Path | Role |
 |---|---|---|
-| `POST` | `/api/invoices` | Upload a PDF (`multipart/form-data`, field `file`, max 10 MB) |
-| `GET` | `/api/invoices` | List invoices, newest first |
-| `GET` | `/api/invoices/{id}` | Invoice with extracted fields and status |
-| `GET` | `/api/invoices/{id}/document` | Original PDF |
+| `POST` | `/api/auth/login` | public – returns a JWT |
+| `GET` | `/api/auth/me` | any |
+| `POST` | `/api/invoices` | EMPLOYEE – upload a PDF (`multipart/form-data`, field `file`, max 10 MB) |
+| `GET` | `/api/invoices`, `/api/invoices/{id}` | VIEWER |
+| `GET` | `/api/invoices/{id}/history` | VIEWER – audit trail |
+| `GET` | `/api/invoices/{id}/document` | VIEWER – original PDF |
+| `POST` | `/api/invoices/{id}/approve` | APPROVER |
+| `POST` | `/api/invoices/{id}/reject` | APPROVER – with reason |
+| `POST` | `/api/invoices/{id}/book` | ACCOUNTANT |
+| `GET`, `POST` | `/api/users` | ADMIN |
 
-Interactive docs: `http://localhost:8080/swagger-ui.html`
+Interactive docs: `http://localhost:8080/swagger-ui.html` – log in, then click **Authorize** and paste the token.
 
 ## Run locally
 
@@ -72,10 +103,12 @@ Or run everything in containers:
 docker compose --profile app up --build
 ```
 
-Upload an invoice:
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` to create the first admin on start. Then:
 
 ```bash
-curl -F "file=@rechnung.pdf" http://localhost:8080/api/invoices
+TOKEN=$(curl -s -H "Content-Type: application/json"   -d '{"email":"admin@example.com","password":"your-admin-password"}'   http://localhost:8080/api/auth/login | jq -r .accessToken)
+
+curl -H "Authorization: Bearer $TOKEN" -F "file=@rechnung.pdf" http://localhost:8080/api/invoices
 ```
 
 ## Tests
@@ -84,18 +117,19 @@ curl -F "file=@rechnung.pdf" http://localhost:8080/api/invoices
 ./mvnw verify
 ```
 
-The integration tests start a real PostgreSQL with Testcontainers and mock only the LLM.
+The integration tests start a real PostgreSQL with Testcontainers, use the real security
+configuration (login, JWT, roles) and mock only the LLM.
 
 ## Roadmap
 
 - [x] Upload, background extraction, REST API, Docker, CI
-- [ ] Login with Spring Security (JWT) and roles: employee, approver, accounting
-- [ ] Approval workflow and audit trail
+- [x] Login with Spring Security (JWT) and roles: employee, approver, accounting
+- [x] Approval workflow (four-eyes principle) and audit trail
 - [ ] Checks: duplicate invoices, VAT plausibility, unknown IBAN
 - [ ] Live status updates via WebSocket
 - [ ] Vue 3 + TypeScript frontend with dashboard
 - [ ] CSV / DATEV-style export
-- [ ] Live demo deployment
+- [x] Live demo deployment
 
 ## Author
 

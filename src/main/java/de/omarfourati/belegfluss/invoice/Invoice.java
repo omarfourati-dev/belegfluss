@@ -46,6 +46,9 @@ public class Invoice {
     private String currency;
     private String iban;
     private String errorMessage;
+    private UUID uploadedBy;
+    private UUID decidedBy;
+    private String decisionComment;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -60,11 +63,12 @@ public class Invoice {
         // for JPA
     }
 
-    public static Invoice received(String originalFilename, byte[] pdfContent) {
+    public static Invoice received(String originalFilename, byte[] pdfContent, UUID uploadedBy) {
         Invoice invoice = new Invoice();
         invoice.id = UUID.randomUUID();
         invoice.originalFilename = originalFilename;
         invoice.pdfContent = pdfContent;
+        invoice.uploadedBy = uploadedBy;
         invoice.status = InvoiceStatus.RECEIVED;
         return invoice;
     }
@@ -86,6 +90,38 @@ public class Invoice {
     public void markFailed(String reason) {
         this.errorMessage = reason;
         this.status = InvoiceStatus.FAILED;
+    }
+
+    /** Four-eyes principle: the uploader may not approve their own invoice. */
+    public void approve(UUID approverId, String comment) {
+        requireStatus(InvoiceStatus.EXTRACTED, "approved");
+        if (approverId.equals(uploadedBy)) {
+            throw new FourEyesViolationException();
+        }
+        decide(InvoiceStatus.APPROVED, approverId, comment);
+    }
+
+    public void reject(UUID approverId, String reason) {
+        requireStatus(InvoiceStatus.EXTRACTED, "rejected");
+        decide(InvoiceStatus.REJECTED, approverId, reason);
+    }
+
+    public void book() {
+        requireStatus(InvoiceStatus.APPROVED, "booked");
+        this.status = InvoiceStatus.BOOKED;
+    }
+
+    private void decide(InvoiceStatus newStatus, UUID actorId, String comment) {
+        this.status = newStatus;
+        this.decidedBy = actorId;
+        this.decisionComment = comment;
+    }
+
+    private void requireStatus(InvoiceStatus expected, String action) {
+        if (status != expected) {
+            throw new InvalidInvoiceStateException(
+                    "Only invoices in status " + expected + " can be " + action + " (current: " + status + ")");
+        }
     }
 
     @PrePersist
@@ -113,6 +149,9 @@ public class Invoice {
     public String getCurrency() { return currency; }
     public String getIban() { return iban; }
     public String getErrorMessage() { return errorMessage; }
+    public UUID getUploadedBy() { return uploadedBy; }
+    public UUID getDecidedBy() { return decidedBy; }
+    public String getDecisionComment() { return decisionComment; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

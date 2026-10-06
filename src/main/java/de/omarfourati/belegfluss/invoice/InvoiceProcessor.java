@@ -25,13 +25,15 @@ public class InvoiceProcessor {
     private static final Logger log = LoggerFactory.getLogger(InvoiceProcessor.class);
 
     private final InvoiceRepository repository;
+    private final InvoiceEventRepository events;
     private final PdfTextReader pdfTextReader;
     private final InvoiceExtractor extractor;
     private final TransactionTemplate tx;
 
-    public InvoiceProcessor(InvoiceRepository repository, PdfTextReader pdfTextReader,
+    public InvoiceProcessor(InvoiceRepository repository, InvoiceEventRepository events, PdfTextReader pdfTextReader,
                             InvoiceExtractor extractor, PlatformTransactionManager txManager) {
         this.repository = repository;
+        this.events = events;
         this.pdfTextReader = pdfTextReader;
         this.extractor = extractor;
         this.tx = new TransactionTemplate(txManager);
@@ -57,19 +59,24 @@ public class InvoiceProcessor {
             if (extracted == null) {
                 throw new ExtractionException("Extractor returned no result");
             }
-            update(invoiceId, invoice -> invoice.applyExtraction(extracted));
+            update(invoiceId, InvoiceEventType.EXTRACTED, null, invoice -> invoice.applyExtraction(extracted));
             log.info("Invoice {} extracted", invoiceId);
         } catch (ExtractionException e) {
             log.warn("Invoice {} failed: {}", invoiceId, e.getMessage());
-            update(invoiceId, invoice -> invoice.markFailed(e.getMessage()));
+            update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, e.getMessage(),
+                    invoice -> invoice.markFailed(e.getMessage()));
         } catch (RuntimeException e) {
             // Never leave an invoice stuck in RECEIVED
             log.error("Invoice {} failed unexpectedly", invoiceId, e);
-            update(invoiceId, invoice -> invoice.markFailed("Unexpected processing error"));
+            String reason = "Unexpected processing error";
+            update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, reason, invoice -> invoice.markFailed(reason));
         }
     }
 
-    private void update(UUID invoiceId, Consumer<Invoice> change) {
-        tx.executeWithoutResult(status -> repository.findById(invoiceId).ifPresent(change));
+    private void update(UUID invoiceId, InvoiceEventType type, String comment, Consumer<Invoice> change) {
+        tx.executeWithoutResult(status -> repository.findById(invoiceId).ifPresent(invoice -> {
+            change.accept(invoice);
+            events.save(new InvoiceEvent(invoiceId, type, null, InvoiceEvent.SYSTEM, comment));
+        }));
     }
 }
