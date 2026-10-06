@@ -1,21 +1,23 @@
 package de.omarfourati.belegfluss.invoice;
 
 import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
-import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -27,10 +29,6 @@ public class Invoice {
 
     @Column(nullable = false)
     private String originalFilename;
-
-    @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = false)
-    private byte[] pdfContent;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -50,6 +48,10 @@ public class Invoice {
     private UUID decidedBy;
     private String decisionComment;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(nullable = false, columnDefinition = "jsonb")
+    private List<InvoiceWarning> warnings = new ArrayList<>();
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -63,11 +65,10 @@ public class Invoice {
         // for JPA
     }
 
-    public static Invoice received(String originalFilename, byte[] pdfContent, UUID uploadedBy) {
+    public static Invoice received(String originalFilename, UUID uploadedBy) {
         Invoice invoice = new Invoice();
         invoice.id = UUID.randomUUID();
         invoice.originalFilename = originalFilename;
-        invoice.pdfContent = pdfContent;
         invoice.uploadedBy = uploadedBy;
         invoice.status = InvoiceStatus.RECEIVED;
         return invoice;
@@ -87,6 +88,10 @@ public class Invoice {
         this.status = InvoiceStatus.EXTRACTED;
     }
 
+    public void setWarnings(List<InvoiceWarning> warnings) {
+        this.warnings = new ArrayList<>(warnings);
+    }
+
     public void markFailed(String reason) {
         this.errorMessage = reason;
         this.status = InvoiceStatus.FAILED;
@@ -97,6 +102,9 @@ public class Invoice {
         requireStatus(InvoiceStatus.EXTRACTED, "approved");
         if (approverId.equals(uploadedBy)) {
             throw new FourEyesViolationException();
+        }
+        if (!warnings.isEmpty() && (comment == null || comment.isBlank())) {
+            throw new WarningsNotAcknowledgedException(warnings);
         }
         decide(InvoiceStatus.APPROVED, approverId, comment);
     }
@@ -137,7 +145,6 @@ public class Invoice {
 
     public UUID getId() { return id; }
     public String getOriginalFilename() { return originalFilename; }
-    public byte[] getPdfContent() { return pdfContent; }
     public InvoiceStatus getStatus() { return status; }
     public String getSupplierName() { return supplierName; }
     public String getInvoiceNumber() { return invoiceNumber; }
@@ -152,6 +159,7 @@ public class Invoice {
     public UUID getUploadedBy() { return uploadedBy; }
     public UUID getDecidedBy() { return decidedBy; }
     public String getDecisionComment() { return decisionComment; }
+    public List<InvoiceWarning> getWarnings() { return List.copyOf(warnings); }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -5,6 +5,7 @@ import de.omarfourati.belegfluss.invoice.FourEyesViolationException;
 import de.omarfourati.belegfluss.invoice.InvalidInvoiceStateException;
 import de.omarfourati.belegfluss.invoice.InvalidUploadException;
 import de.omarfourati.belegfluss.invoice.InvoiceNotFoundException;
+import de.omarfourati.belegfluss.invoice.WarningsNotAcknowledgedException;
 import de.omarfourati.belegfluss.user.EmailAlreadyUsedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -44,6 +45,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(FourEyesViolationException.class)
     ProblemDetail fourEyes(FourEyesViolationException e) {
         return problem(HttpStatus.FORBIDDEN, "Four-eyes principle", e.getMessage());
+    }
+
+    @ExceptionHandler(WarningsNotAcknowledgedException.class)
+    ProblemDetail warningsNotAcknowledged(WarningsNotAcknowledgedException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Comment required", e.getMessage());
     }
 
     @ExceptionHandler(EmailAlreadyUsedException.class)

@@ -2,6 +2,7 @@ package de.omarfourati.belegfluss.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Enables {@code @Async} processing. With {@code spring.threads.virtual.enabled=true}
@@ -9,5 +10,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @Configuration
 @EnableAsync
+@EnableScheduling
 public class AsyncConfig {
 }

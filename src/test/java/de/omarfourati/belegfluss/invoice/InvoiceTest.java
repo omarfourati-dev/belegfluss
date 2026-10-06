@@ -17,7 +17,7 @@ class InvoiceTest {
 
     @Test
     void newInvoiceStartsAsReceived() {
-        Invoice invoice = Invoice.received("a.pdf", new byte[]{1}, uploader);
+        Invoice invoice = Invoice.received("a.pdf", uploader);
 
         assertThat(invoice.getId()).isNotNull();
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.RECEIVED);
@@ -26,7 +26,7 @@ class InvoiceTest {
 
     @Test
     void successfulExtractionClearsPreviousError() {
-        Invoice invoice = Invoice.received("a.pdf", new byte[]{1}, uploader);
+        Invoice invoice = Invoice.received("a.pdf", uploader);
         invoice.markFailed("timeout");
 
         invoice.applyExtraction(extraction());
@@ -57,7 +57,7 @@ class InvoiceTest {
 
     @Test
     void onlyExtractedInvoicesCanBeDecided() {
-        Invoice invoice = Invoice.received("a.pdf", new byte[]{1}, uploader);
+        Invoice invoice = Invoice.received("a.pdf", uploader);
 
         assertThatThrownBy(() -> invoice.approve(approver, null)).isInstanceOf(InvalidInvoiceStateException.class);
         assertThatThrownBy(() -> invoice.reject(approver, "no")).isInstanceOf(InvalidInvoiceStateException.class);
@@ -75,7 +75,7 @@ class InvoiceTest {
     }
 
     private Invoice extractedInvoice() {
-        Invoice invoice = Invoice.received("a.pdf", new byte[]{1}, uploader);
+        Invoice invoice = Invoice.received("a.pdf", uploader);
         invoice.applyExtraction(extraction());
         return invoice;
     }

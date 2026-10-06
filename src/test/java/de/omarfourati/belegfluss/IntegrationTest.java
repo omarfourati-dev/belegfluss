@@ -62,7 +62,7 @@ public abstract class IntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
-        jdbc.execute("TRUNCATE invoice_event, invoice, app_user CASCADE");
+        jdbc.execute("TRUNCATE invoice_event, invoice_document, invoice, app_user CASCADE");
     }
 
     /** Creates a user with the given role and returns a valid access token for it. */

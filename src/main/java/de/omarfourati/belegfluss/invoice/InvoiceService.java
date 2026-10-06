@@ -16,12 +16,14 @@ public class InvoiceService {
     private static final byte[] PDF_MAGIC = {'%', 'P', 'D', 'F'};
 
     private final InvoiceRepository repository;
+    private final InvoiceDocumentRepository documents;
     private final InvoiceEventRepository events;
     private final ApplicationEventPublisher publisher;
 
-    public InvoiceService(InvoiceRepository repository, InvoiceEventRepository events,
-                          ApplicationEventPublisher publisher) {
+    public InvoiceService(InvoiceRepository repository, InvoiceDocumentRepository documents,
+                          InvoiceEventRepository events, ApplicationEventPublisher publisher) {
         this.repository = repository;
+        this.documents = documents;
         this.events = events;
         this.publisher = publisher;
     }
@@ -38,9 +40,11 @@ public class InvoiceService {
         }
         String filename = (originalFilename == null || originalFilename.isBlank())
                 ? "invoice.pdf" : originalFilename;
-        Invoice invoice = repository.save(Invoice.received(filename, content, user.id()));
+        Invoice invoice = repository.save(Invoice.received(filename, user.id()));
+        documents.save(new InvoiceDocument(invoice.getId(), content));
         record(invoice.getId(), InvoiceEventType.UPLOADED, user, null);
         publisher.publishEvent(new InvoiceReceivedEvent(invoice.getId()));
+        publisher.publishEvent(new InvoiceStatusChanged(invoice.getId(), invoice.getStatus()));
         return invoice;
     }
 
@@ -70,6 +74,18 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
+    public byte[] document(UUID id) {
+        return documents.findById(id).map(InvoiceDocument::getContent)
+                .orElseThrow(() -> new InvoiceNotFoundException(id));
+    }
+
+    /** Invoices ready for accounting export, oldest invoice date first. */
+    @Transactional(readOnly = true)
+    public List<Invoice> findForExport(List<InvoiceStatus> statuses) {
+        return repository.findByStatusInOrderByInvoiceDateAscCreatedAtAsc(statuses);
+    }
+
+    @Transactional(readOnly = true)
     public List<InvoiceEvent> history(UUID id) {
         get(id);
         return events.findByInvoiceIdOrderByCreatedAtAsc(id);
@@ -79,6 +95,7 @@ public class InvoiceService {
         Invoice invoice = get(id);
         action.accept(invoice);
         record(id, type, user, comment);
+        publisher.publishEvent(new InvoiceStatusChanged(id, invoice.getStatus()));
         return invoice;
     }
 

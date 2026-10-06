@@ -4,6 +4,7 @@ import de.omarfourati.belegfluss.auth.CurrentUser;
 import de.omarfourati.belegfluss.invoice.InvalidUploadException;
 import de.omarfourati.belegfluss.invoice.Invoice;
 import de.omarfourati.belegfluss.invoice.InvoiceService;
+import de.omarfourati.belegfluss.invoice.InvoiceStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
@@ -38,9 +40,11 @@ import java.util.UUID;
 public class InvoiceController {
 
     private final InvoiceService service;
+    private final InvoiceStatusStream statusStream;
 
-    public InvoiceController(InvoiceService service) {
+    public InvoiceController(InvoiceService service, InvoiceStatusStream statusStream) {
         this.service = service;
+        this.statusStream = statusStream;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -63,6 +67,27 @@ public class InvoiceController {
         return service.findAll().stream().map(InvoiceResponse::from).toList();
     }
 
+    @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Live status updates (Server-Sent Events)",
+            description = "Sends an `invoice` event {invoiceId, status} whenever an invoice changes.")
+    public SseEmitter events() {
+        return statusStream.subscribe();
+    }
+
+    @GetMapping(value = "/export.csv", produces = "text/csv")
+    @PreAuthorize("hasRole('ACCOUNTANT')")
+    @Operation(summary = "Accounting export as CSV (ACCOUNTANT)",
+            description = "DATEV-style CSV: semicolons, decimal comma. Default: approved and booked invoices.")
+    public ResponseEntity<byte[]> export(@RequestParam(defaultValue = "APPROVED,BOOKED") List<InvoiceStatus> status) {
+        byte[] csv = InvoiceCsvExport.toCsv(service.findForExport(status)).getBytes(StandardCharsets.UTF_8);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("belegfluss-export.csv").build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(csv);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get one invoice with its extracted fields")
     public InvoiceResponse get(@PathVariable UUID id) {
@@ -77,7 +102,8 @@ public class InvoiceController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('APPROVER')")
-    @Operation(summary = "Approve an extracted invoice (APPROVER, not the uploader)")
+    @Operation(summary = "Approve an extracted invoice (APPROVER, not the uploader)",
+            description = "If the automatic checks found warnings, a comment is required.")
     public InvoiceResponse approve(@PathVariable UUID id, @Valid @RequestBody(required = false) DecisionRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
         String comment = request == null ? null : request.comment();
@@ -108,7 +134,7 @@ public class InvoiceController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentType(MediaType.APPLICATION_PDF)
-                .body(invoice.getPdfContent());
+                .body(service.document(id));
     }
 
     public record DecisionRequest(@Size(max = 500) String comment) {

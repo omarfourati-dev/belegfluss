@@ -2,10 +2,12 @@ package de.omarfourati.belegfluss.web;
 
 import de.omarfourati.belegfluss.invoice.Invoice;
 import de.omarfourati.belegfluss.invoice.InvoiceStatus;
+import de.omarfourati.belegfluss.invoice.InvoiceWarning;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record InvoiceResponse(
@@ -23,6 +25,7 @@ public record InvoiceResponse(
         String iban,
         String errorMessage,
         String decisionComment,
+        List<Warning> warnings,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -43,7 +46,15 @@ public record InvoiceResponse(
                 invoice.getIban(),
                 invoice.getErrorMessage(),
                 invoice.getDecisionComment(),
+                invoice.getWarnings().stream().map(Warning::of).toList(),
                 invoice.getCreatedAt(),
                 invoice.getUpdatedAt());
+    }
+
+    public record Warning(InvoiceWarning code, String message) {
+
+        static Warning of(InvoiceWarning warning) {
+            return new Warning(warning, warning.message());
+        }
     }
 }
