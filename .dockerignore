@@ -4,3 +4,5 @@ target/
 .vscode/
 .env
 .env.*
+frontend/node_modules/
+frontend/dist/

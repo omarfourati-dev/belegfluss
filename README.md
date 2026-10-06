@@ -57,6 +57,31 @@ RECEIVED ──AI──► EXTRACTED ──approve──► APPROVED ──book�
   role hierarchy via Spring Security `RoleHierarchy`, checks with `@PreAuthorize`.
 - Passwords hashed with BCrypt; failed logins take the same time for known and unknown e-mails.
 
+## Automatic checks
+
+After the extraction every invoice is checked. Warnings never block, but approving an invoice
+with warnings requires a comment (`422` otherwise).
+
+| Warning | What it catches |
+|---|---|
+| `DUPLICATE` | same supplier and invoice number again – prevents paying twice |
+| `IBAN_CHANGED` | supplier used another IBAN before – classic payment fraud pattern |
+| `INVALID_IBAN` | ISO 13616 mod-97 check digits are wrong |
+| `VAT_MISMATCH` | net + VAT ≠ gross (1 cent tolerance) |
+| `UNUSUAL_VAT_RATE` | VAT rate is not 0 %, 7 % or 19 % |
+| `MISSING_FIELDS` | supplier, invoice number or gross amount could not be read |
+
+## Frontend
+
+Vue 3 + TypeScript + Vite + Tailwind, served by Spring Boot from the same origin (no CORS):
+login, dashboard with key figures, drag & drop upload, live status via Server-Sent Events,
+detail view with PDF preview, warnings, audit trail and role-dependent actions, CSV export
+and user management.
+
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:5173, proxies /api to :8080
+```
+
 ## Tech stack
 
 | Area | Technology |
@@ -68,7 +93,8 @@ RECEIVED ──AI──► EXTRACTED ──approve──► APPROVED ──book�
 | Security | Spring Security, OAuth2 resource server (JWT), BCrypt, role hierarchy |
 | API | REST, OpenAPI / Swagger UI, RFC 9457 problem details |
 | Operations | Actuator, Prometheus metrics, Docker (layered jar, non-root), GitHub Actions |
-| Tests | JUnit 5, AssertJ, Mockito, Testcontainers (real PostgreSQL), Awaitility |
+| Frontend | Vue 3, TypeScript, Vite, Tailwind CSS, Server-Sent Events |
+| Tests | JUnit 5, AssertJ, Mockito, Testcontainers (real PostgreSQL), Awaitility, Vitest, Vue Test Utils |
 
 ## API
 
@@ -79,6 +105,8 @@ RECEIVED ──AI──► EXTRACTED ──approve──► APPROVED ──book�
 | `POST` | `/api/invoices` | EMPLOYEE – upload a PDF (`multipart/form-data`, field `file`, max 10 MB) |
 | `GET` | `/api/invoices`, `/api/invoices/{id}` | VIEWER |
 | `GET` | `/api/invoices/{id}/history` | VIEWER – audit trail |
+| `GET` | `/api/invoices/events` | VIEWER – live status (Server-Sent Events) |
+| `GET` | `/api/invoices/export.csv` | ACCOUNTANT – DATEV-style CSV |
 | `GET` | `/api/invoices/{id}/document` | VIEWER – original PDF |
 | `POST` | `/api/invoices/{id}/approve` | APPROVER |
 | `POST` | `/api/invoices/{id}/reject` | APPROVER – with reason |
@@ -114,7 +142,8 @@ curl -H "Authorization: Bearer $TOKEN" -F "file=@rechnung.pdf" http://localhost:
 ## Tests
 
 ```bash
-./mvnw verify
+./mvnw verify                 # backend: unit + integration tests
+cd frontend && npm test       # frontend: Vitest
 ```
 
 The integration tests start a real PostgreSQL with Testcontainers, use the real security
@@ -125,11 +154,12 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Upload, background extraction, REST API, Docker, CI
 - [x] Login with Spring Security (JWT) and roles: employee, approver, accounting
 - [x] Approval workflow (four-eyes principle) and audit trail
-- [ ] Checks: duplicate invoices, VAT plausibility, unknown IBAN
-- [ ] Live status updates via WebSocket
-- [ ] Vue 3 + TypeScript frontend with dashboard
-- [ ] CSV / DATEV-style export
+- [x] Checks: duplicate invoices, VAT plausibility, IBAN check digits, changed IBAN
+- [x] Live status updates via Server-Sent Events
+- [x] Vue 3 + TypeScript frontend with dashboard
+- [x] CSV / DATEV-style export
 - [x] Live demo deployment
+- [ ] Ideas: OCR for scanned PDFs, e-invoices (XRechnung / ZUGFeRD), e-mail inbox import
 
 ## Author
 
