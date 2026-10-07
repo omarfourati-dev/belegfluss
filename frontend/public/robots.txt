@@ -1,0 +1,23 @@
+# Belegfluss - https://belegfluss.omarfourati.de
+# The landing page is meant to be found, also by AI search and assistants.
+# The app behind the login and the API are not.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /actuator/
+
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /api/
+Disallow: /actuator/
+
+Sitemap: https://belegfluss.omarfourati.de/sitemap.xml

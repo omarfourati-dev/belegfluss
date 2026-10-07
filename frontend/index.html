@@ -3,12 +3,472 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Belegfluss – KI-Rechnungseingang mit Freigabe-Workflow" />
+    <title>Belegfluss – KI-Rechnungseingang mit E-Rechnung (XRechnung, ZUGFeRD) und Freigabe</title>
+    <meta
+      name="description"
+      content="Belegfluss liest Eingangsrechnungen automatisch aus: E-Rechnungen (XRechnung, ZUGFeRD) exakt ohne KI, PDFs und Scans per KI. Mit Prüfungen auf Dubletten, Umsatzsteuer und IBAN, Vier-Augen-Freigabe und CSV-Export. Portfolio-Projekt mit Java 21 und Spring Boot."
+    />
+    <meta name="author" content="Omar Fourati" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="canonical" href="https://belegfluss.omarfourati.de/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Belegfluss</title>
+    <link rel="alternate" type="text/plain" title="Zusammenfassung für KI-Systeme" href="/llms.txt" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:site_name" content="Belegfluss" />
+    <meta property="og:url" content="https://belegfluss.omarfourati.de/" />
+    <meta property="og:title" content="Belegfluss – Rechnungseingang mit KI, E-Rechnungen ganz ohne KI" />
+    <meta
+      property="og:description"
+      content="E-Rechnungen exakt übernehmen, PDFs und Scans per KI auslesen, automatisch prüfen und im Vier-Augen-Prinzip freigeben. Live-Demo und Quellcode."
+    />
+    <meta property="og:image" content="https://belegfluss.omarfourati.de/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Belegfluss: Rechnung hochladen, auslesen, prüfen, freigeben" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Belegfluss – Rechnungseingang mit KI, E-Rechnungen ganz ohne KI" />
+    <meta
+      name="twitter:description"
+      content="E-Rechnungen exakt übernehmen, PDFs und Scans per KI auslesen, automatisch prüfen und im Vier-Augen-Prinzip freigeben."
+    />
+    <meta name="twitter:image" content="https://belegfluss.omarfourati.de/og-image.png" />
+
+    <script>
+      // Old links pointed at the app under "/#/..." - the app now lives under "/app/"
+      if (location.hash.startsWith('#/')) location.replace('/app/' + location.hash)
+    </script>
+    <link rel="stylesheet" href="/src/landing.css" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://belegfluss.omarfourati.de/#website",
+            "url": "https://belegfluss.omarfourati.de/",
+            "name": "Belegfluss",
+            "inLanguage": "de-DE",
+            "author": { "@id": "https://omarfourati.de/#person" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://belegfluss.omarfourati.de/#software",
+            "name": "Belegfluss",
+            "url": "https://belegfluss.omarfourati.de/",
+            "description": "Rechnungseingang für kleine Unternehmen: E-Rechnungen (XRechnung UBL/CII, ZUGFeRD/Factur-X) werden exakt ohne KI übernommen, PDFs und Scans per Sprachmodell ausgelesen. Automatische Prüfungen, Vier-Augen-Freigabe, Audit-Trail und CSV-Export.",
+            "applicationCategory": "BusinessApplication",
+            "applicationSubCategory": "Rechnungseingang / Kreditorenbuchhaltung",
+            "operatingSystem": "Web",
+            "softwareVersion": "1.2.0",
+            "inLanguage": "de-DE",
+            "isAccessibleForFree": true,
+            "codeRepository": "https://github.com/omarfourati-dev/belegfluss",
+            "programmingLanguage": ["Java", "TypeScript"],
+            "featureList": [
+              "E-Rechnungen XRechnung (UBL und CII) und ZUGFeRD / Factur-X ohne KI auslesen",
+              "PDF-Rechnungen mit Textebene per Sprachmodell (Spring AI) auslesen",
+              "Gescannte Rechnungen per Vision-Modell auslesen",
+              "Prüfungen auf Dubletten, Umsatzsteuer, IBAN-Prüfziffer und geänderte IBAN",
+              "Vier-Augen-Freigabe mit Rollen und Audit-Trail",
+              "CSV-Export im DATEV-ähnlichen Format",
+              "Live-Status per Server-Sent Events"
+            ],
+            "author": { "@id": "https://omarfourati.de/#person" }
+          },
+          {
+            "@type": "Person",
+            "@id": "https://omarfourati.de/#person",
+            "name": "Omar Fourati",
+            "jobTitle": "Full-Stack Developer",
+            "url": "https://omarfourati.de",
+            "sameAs": ["https://github.com/omarfourati-dev", "https://www.linkedin.com/in/omarfourati/"]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://belegfluss.omarfourati.de/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Was ist Belegfluss?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Belegfluss ist ein Rechnungseingang für kleine Unternehmen. Eingangsrechnungen werden hochgeladen, automatisch ausgelesen und geprüft und anschließend im Vier-Augen-Prinzip freigegeben und gebucht. Es ist ein Portfolio-Projekt von Omar Fourati mit öffentlichem Quellcode, kein kommerzielles Produkt."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Welche E-Rechnungsformate liest Belegfluss?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Belegfluss liest beide Syntaxen der europäischen Norm EN 16931: UBL 2.1 (XRechnung) und UN/CEFACT CII (XRechnung CII, ZUGFeRD und Factur-X). Die Rechnung kann als XML-Datei hochgeladen werden oder als PDF mit eingebettetem XML (ZUGFeRD)."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Braucht jede Rechnung KI?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Nein. E-Rechnungen werden exakt aus dem XML übernommen, ohne KI und ohne Kosten. Nur PDFs ohne E-Rechnungsdaten werden von einem Sprachmodell ausgelesen, Scans ohne Textebene von einem Vision-Modell."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Welche Prüfungen macht Belegfluss automatisch?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Belegfluss warnt bei möglichen Dubletten, wenn Netto plus Umsatzsteuer nicht den Bruttobetrag ergibt, bei ungewöhnlichen Umsatzsteuersätzen, bei ungültiger IBAN-Prüfziffer und wenn ein Lieferant plötzlich eine andere IBAN angibt. Wer eine Rechnung mit Warnungen freigibt, muss einen Kommentar schreiben."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Was bedeutet Vier-Augen-Freigabe in Belegfluss?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Weder die Person, die eine Rechnung hochgeladen hat, noch die Person, die zuletzt Felder korrigiert hat, darf sie freigeben. So kann niemand allein eine IBAN ändern und die Zahlung freigeben. Jeder Schritt landet im Audit-Trail."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Mit welcher Technik ist Belegfluss gebaut?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Backend mit Java 21, Spring Boot 3, Spring AI, Spring Security (JWT), PostgreSQL und Flyway, Frontend mit Vue 3, TypeScript und Tailwind CSS. Getestet mit JUnit 5, Testcontainers, Vitest und Playwright, ausgeliefert per Docker und GitHub Actions."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Kann ich Belegfluss ausprobieren?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ja. Die Live-Demo unter belegfluss.omarfourati.de/app/ hat einen schreibgeschützten Demo-Zugang, der sich auf der Anmeldeseite mit einem Klick nutzen lässt. Der Quellcode liegt auf GitHub unter omarfourati-dev/belegfluss."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-800 antialiased">
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+  <body class="bg-white text-slate-700 antialiased">
+    <a href="#inhalt" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">Zum Inhalt springen</a>
+
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <a href="/" class="flex items-center gap-2 font-semibold text-slate-900">
+          <img src="/favicon.svg" alt="" width="28" height="28" />
+          Belegfluss
+        </a>
+        <nav aria-label="Hauptnavigation" class="flex items-center gap-1 text-sm sm:gap-5">
+          <a href="#so-funktionierts" class="hidden text-slate-600 hover:text-brand-700 md:inline">So funktioniert's</a>
+          <a href="#pruefungen" class="hidden text-slate-600 hover:text-brand-700 md:inline">Prüfungen</a>
+          <a href="#technik" class="hidden text-slate-600 hover:text-brand-700 md:inline">Technik</a>
+          <a href="#faq" class="hidden text-slate-600 hover:text-brand-700 md:inline">FAQ</a>
+          <a href="/app/#/login" class="btn btn-primary !px-4 !py-2">Live-Demo</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="inhalt">
+      <!-- Hero -->
+      <section class="border-b border-slate-200 bg-gradient-to-b from-brand-50 to-white">
+        <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
+          <div>
+            <p class="eyebrow">Rechnungseingang für kleine Unternehmen</p>
+            <h1 class="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+              Rechnungen auslesen, prüfen und freigeben – KI nur, wo sie nötig ist.
+            </h1>
+            <p class="mt-5 text-lg leading-relaxed text-slate-600">
+              Belegfluss übernimmt E-Rechnungen (XRechnung, ZUGFeRD) exakt aus dem XML. Nur normale PDFs und Scans liest ein
+              Sprachmodell aus. Danach prüft Belegfluss jede Rechnung automatisch und führt sie durch eine Vier-Augen-Freigabe
+              bis zur Buchung.
+            </p>
+            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a href="/app/#/login" class="btn btn-primary">Live-Demo ansehen</a>
+              <a href="https://github.com/omarfourati-dev/belegfluss" class="btn btn-secondary" rel="noopener">Quellcode auf GitHub</a>
+            </div>
+            <p class="mt-4 text-sm text-slate-500">
+              Demo-Zugang mit einem Klick auf der Anmeldeseite, schreibgeschützt. Ein Portfolio-Projekt mit öffentlichem Quellcode, kein
+              kommerzielles Produkt.
+            </p>
+          </div>
+
+          <!-- The pipeline as a diagram: what happens to an invoice after the upload -->
+          <figure class="card p-5 sm:p-6" aria-labelledby="pipeline-caption">
+            <figcaption id="pipeline-caption" class="text-sm font-semibold text-slate-900">Was mit einer Rechnung passiert</figcaption>
+            <ol class="mt-4 space-y-3 text-sm">
+              <li class="flex gap-3 rounded-lg bg-slate-50 p-3">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">1</span>
+                <div>
+                  <p class="font-medium text-slate-900">Hochladen</p>
+                  <p class="text-slate-600">PDF, Scan oder E-Rechnung als XML, bis 10 MB</p>
+                </div>
+              </li>
+              <li class="flex gap-3 rounded-lg bg-slate-50 p-3">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">2</span>
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-slate-900">Auslesen – die genaueste Quelle zuerst</p>
+                  <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
+                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">E-Rechnung · exakt, ohne KI</span>
+                    <span class="rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-800">PDF · Sprachmodell</span>
+                    <span class="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-800">Scan · Vision-Modell</span>
+                  </div>
+                </div>
+              </li>
+              <li class="flex gap-3 rounded-lg bg-slate-50 p-3">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">3</span>
+                <div>
+                  <p class="font-medium text-slate-900">Prüfen</p>
+                  <p class="text-slate-600">Dublette? Umsatzsteuer stimmig? IBAN gültig oder plötzlich anders?</p>
+                </div>
+              </li>
+              <li class="flex gap-3 rounded-lg bg-slate-50 p-3">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">4</span>
+                <div>
+                  <p class="font-medium text-slate-900">Freigeben &amp; buchen</p>
+                  <p class="text-slate-600">Vier-Augen-Prinzip, Audit-Trail, CSV-Export für die Buchhaltung</p>
+                </div>
+              </li>
+            </ol>
+          </figure>
+        </div>
+      </section>
+
+      <!-- What is it -->
+      <section class="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="was-ist">
+        <div class="max-w-3xl">
+          <p class="eyebrow">Worum es geht</p>
+          <h2 id="was-ist" class="section-title mt-2">Was ist Belegfluss?</h2>
+          <p class="mt-4 text-lg leading-relaxed">
+            Viele kleine Firmen tippen Lieferant, Rechnungsnummer, Beträge und IBAN aus Eingangsrechnungen noch von Hand in die
+            Buchhaltung. Das kostet Zeit und öffnet die Tür für Fehler und Betrug – etwa wenn eine gefälschte Rechnung mit
+            geänderter Bankverbindung durchrutscht.
+          </p>
+          <p class="mt-4 text-lg leading-relaxed">
+            <strong class="text-slate-900">Belegfluss</strong> ist ein Rechnungseingang, der genau diesen Schritt übernimmt: Er
+            liest jede Rechnung in strukturierte Daten aus, prüft sie auf typische Fehler und führt sie durch eine Freigabe mit
+            klaren Rollen. Seit 2025 müssen Unternehmen in Deutschland E-Rechnungen empfangen können – Belegfluss liest diese
+            Formate direkt und braucht dafür keine KI.
+          </p>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section id="so-funktionierts" class="border-y border-slate-200 bg-slate-50" aria-labelledby="wie">
+        <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <p class="eyebrow">So funktioniert's</p>
+          <h2 id="wie" class="section-title mt-2">Drei Wege, eine Rechnung zu lesen</h2>
+          <p class="mt-3 max-w-3xl">
+            Belegfluss nimmt immer die genaueste und günstigste Quelle, die eine Rechnung hergibt. Das Auslesen läuft im
+            Hintergrund; der Status erscheint live in der Oberfläche.
+          </p>
+          <div class="mt-8 grid gap-5 md:grid-cols-3">
+            <article class="card p-6">
+              <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">Ohne KI</span>
+              <h3 class="mt-4 text-lg font-semibold text-slate-900">E-Rechnung</h3>
+              <p class="mt-2 text-sm leading-relaxed">
+                XRechnung (UBL 2.1 und CII), ZUGFeRD und Factur-X – als XML-Datei oder eingebettet im PDF. Die Felder werden
+                exakt übernommen, ohne Ratespiel und ohne Kosten für KI-Aufrufe.
+              </p>
+            </article>
+            <article class="card p-6">
+              <span class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800">Sprachmodell</span>
+              <h3 class="mt-4 text-lg font-semibold text-slate-900">PDF mit Text</h3>
+              <p class="mt-2 text-sm leading-relaxed">
+                Der Text des PDFs geht an ein Sprachmodell. Über Spring AI kommt die Antwort direkt als typisiertes Java-Objekt
+                zurück: Lieferant, Rechnungsnummer, Datum, Netto, Umsatzsteuer, Brutto, IBAN.
+              </p>
+            </article>
+            <article class="card p-6">
+              <span class="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">Vision-Modell</span>
+              <h3 class="mt-4 text-lg font-semibold text-slate-900">Scan oder Foto</h3>
+              <p class="mt-2 text-sm leading-relaxed">
+                Hat das PDF keine Textebene, rendert Belegfluss die ersten Seiten als Bild und lässt sie von einem Vision-Modell
+                lesen. Stimmt etwas nicht, lassen sich alle Felder von Hand korrigieren.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Checks -->
+      <section id="pruefungen" class="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="checks">
+        <div class="grid gap-10 lg:grid-cols-2">
+          <div>
+            <p class="eyebrow">Automatische Prüfungen</p>
+            <h2 id="checks" class="section-title mt-2">Fehler auffallen lassen, bevor Geld fließt</h2>
+            <p class="mt-4">
+              Nach dem Auslesen prüft Belegfluss jede Rechnung. Warnungen blockieren nichts, aber wer eine Rechnung mit Warnung
+              freigibt, muss begründen, warum.
+            </p>
+          </div>
+          <ul class="grid gap-3 sm:grid-cols-2">
+            <li class="card p-4"><p class="font-semibold text-slate-900">Dublette</p><p class="mt-1 text-sm">Gleicher Lieferant und gleiche Rechnungsnummer schon vorhanden.</p></li>
+            <li class="card p-4"><p class="font-semibold text-slate-900">Beträge</p><p class="mt-1 text-sm">Netto plus Umsatzsteuer ergibt nicht den Bruttobetrag.</p></li>
+            <li class="card p-4"><p class="font-semibold text-slate-900">Steuersatz</p><p class="mt-1 text-sm">Umsatzsteuersatz passt zu keinem üblichen deutschen Satz.</p></li>
+            <li class="card p-4"><p class="font-semibold text-slate-900">IBAN ungültig</p><p class="mt-1 text-sm">Die Prüfziffer der IBAN stimmt nicht (Modulo 97).</p></li>
+            <li class="card p-4 sm:col-span-2"><p class="font-semibold text-slate-900">IBAN geändert</p><p class="mt-1 text-sm">Ein bekannter Lieferant nennt plötzlich eine andere Bankverbindung – ein klassisches Zeichen für Rechnungsbetrug.</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Roles and approval -->
+      <section class="border-y border-slate-200 bg-slate-50" aria-labelledby="freigabe">
+        <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <p class="eyebrow">Rollen &amp; Freigabe</p>
+          <h2 id="freigabe" class="section-title mt-2">Vier Augen, klare Zuständigkeiten</h2>
+          <div class="mt-8 grid gap-10 lg:grid-cols-2">
+            <div class="space-y-4">
+              <p>
+                Wer eine Rechnung hochlädt oder ihre Felder zuletzt geändert hat, darf sie nicht selbst freigeben. So kann
+                niemand allein eine IBAN austauschen und die Zahlung durchwinken.
+              </p>
+              <p>
+                Jeder Schritt – Upload, Auslesen, Korrektur, Freigabe, Ablehnung, Buchung – landet mit Person und Zeitpunkt im
+                Audit-Trail. Gebuchte Rechnungen exportiert die Buchhaltung als CSV im DATEV-ähnlichen Format.
+              </p>
+            </div>
+            <dl class="card divide-y divide-slate-100 text-sm">
+              <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Betrachter</dt><dd>sieht Rechnungen und ihren Verlauf</dd></div>
+              <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Mitarbeiter</dt><dd>lädt Rechnungen hoch und korrigiert Felder</dd></div>
+              <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Freigeber</dt><dd>gibt Rechnungen frei oder lehnt sie ab</dd></div>
+              <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Buchhaltung</dt><dd>bucht und exportiert</dd></div>
+              <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Admin</dt><dd>verwaltet Benutzer und Rollen</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tech -->
+      <section id="technik" class="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="tech">
+        <p class="eyebrow">Technik</p>
+        <h2 id="tech" class="section-title mt-2">Gebaut wie ein echtes Produkt</h2>
+        <div class="mt-8 grid gap-5 md:grid-cols-3">
+          <div class="card p-6">
+            <h3 class="font-semibold text-slate-900">Backend</h3>
+            <p class="mt-2 text-sm leading-relaxed">
+              Java 21 und Spring Boot 3. Spring AI für strukturierte Ausgaben und Vision, Spring Security mit JWT und
+              Rollenhierarchie, PostgreSQL mit Flyway-Migrationen, PDFBox. Hintergrundverarbeitung auf virtuellen Threads.
+            </p>
+          </div>
+          <div class="card p-6">
+            <h3 class="font-semibold text-slate-900">Frontend</h3>
+            <p class="mt-2 text-sm leading-relaxed">
+              Vue 3 mit TypeScript, Vite und Tailwind CSS. Live-Status per Server-Sent Events, PDF- und XML-Vorschau,
+              Korrekturformular mit Validierung.
+            </p>
+          </div>
+          <div class="card p-6">
+            <h3 class="font-semibold text-slate-900">Qualität &amp; Betrieb</h3>
+            <p class="mt-2 text-sm leading-relaxed">
+              JUnit 5 und Testcontainers gegen echte PostgreSQL, Vitest, Playwright-Tests für den ganzen Freigabeprozess im
+              Browser. Docker, GitHub Actions, Caddy mit HTTPS. Der XML-Parser ist gegen XXE gehärtet, Logins sind gegen
+              Durchprobieren gedrosselt.
+            </p>
+          </div>
+        </div>
+        <p class="mt-6 text-sm">
+          Die API ist mit OpenAPI dokumentiert:
+          <a href="/swagger-ui.html" class="font-medium text-brand-700 underline underline-offset-2 hover:text-brand-800">Swagger UI öffnen</a>.
+        </p>
+      </section>
+
+      <!-- FAQ: same questions and answers as the FAQPage structured data in the head -->
+      <section id="faq" class="border-t border-slate-200 bg-slate-50" aria-labelledby="faq-title">
+        <div class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title" class="section-title mt-2">Häufige Fragen</h2>
+          <div class="mt-8 space-y-3">
+            <details class="card group p-5" open>
+              <summary class="cursor-pointer font-semibold text-slate-900">Was ist Belegfluss?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Belegfluss ist ein Rechnungseingang für kleine Unternehmen. Eingangsrechnungen werden hochgeladen, automatisch
+                ausgelesen und geprüft und anschließend im Vier-Augen-Prinzip freigegeben und gebucht. Es ist ein
+                Portfolio-Projekt von Omar Fourati mit öffentlichem Quellcode, kein kommerzielles Produkt.
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Welche E-Rechnungsformate liest Belegfluss?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Belegfluss liest beide Syntaxen der europäischen Norm EN 16931: UBL 2.1 (XRechnung) und UN/CEFACT CII
+                (XRechnung CII, ZUGFeRD und Factur-X). Die Rechnung kann als XML-Datei hochgeladen werden oder als PDF mit
+                eingebettetem XML (ZUGFeRD).
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Braucht jede Rechnung KI?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Nein. E-Rechnungen werden exakt aus dem XML übernommen, ohne KI und ohne Kosten. Nur PDFs ohne
+                E-Rechnungsdaten werden von einem Sprachmodell ausgelesen, Scans ohne Textebene von einem Vision-Modell.
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Welche Prüfungen macht Belegfluss automatisch?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Belegfluss warnt bei möglichen Dubletten, wenn Netto plus Umsatzsteuer nicht den Bruttobetrag ergibt, bei
+                ungewöhnlichen Umsatzsteuersätzen, bei ungültiger IBAN-Prüfziffer und wenn ein Lieferant plötzlich eine andere
+                IBAN angibt. Wer eine Rechnung mit Warnungen freigibt, muss einen Kommentar schreiben.
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Was bedeutet Vier-Augen-Freigabe in Belegfluss?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Weder die Person, die eine Rechnung hochgeladen hat, noch die Person, die zuletzt Felder korrigiert hat, darf sie
+                freigeben. So kann niemand allein eine IBAN ändern und die Zahlung freigeben. Jeder Schritt landet im
+                Audit-Trail.
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Mit welcher Technik ist Belegfluss gebaut?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Backend mit Java 21, Spring Boot 3, Spring AI, Spring Security (JWT), PostgreSQL und Flyway, Frontend mit Vue 3,
+                TypeScript und Tailwind CSS. Getestet mit JUnit 5, Testcontainers, Vitest und Playwright, ausgeliefert per
+                Docker und GitHub Actions.
+              </p>
+            </details>
+            <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Kann ich Belegfluss ausprobieren?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Ja. Die <a href="/app/#/login" class="font-medium text-brand-700 underline underline-offset-2">Live-Demo</a> hat
+                einen schreibgeschützten Demo-Zugang, der sich auf der Anmeldeseite mit einem Klick nutzen lässt. Der Quellcode
+                liegt auf GitHub unter
+                <a href="https://github.com/omarfourati-dev/belegfluss" class="font-medium text-brand-700 underline underline-offset-2" rel="noopener">omarfourati-dev/belegfluss</a>.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="bg-brand-800 text-white">
+        <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center">
+          <div>
+            <h2 class="text-2xl font-bold">Selbst ausprobieren</h2>
+            <p class="mt-2 text-brand-100">Demo-Zugang auf der Anmeldeseite, keine Registrierung nötig.</p>
+          </div>
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <a href="/app/#/login" class="btn bg-white text-brand-800 hover:bg-brand-50">Live-Demo öffnen</a>
+            <a href="https://github.com/omarfourati-dev/belegfluss" class="btn border border-white/40 text-white hover:bg-white/10" rel="noopener">Quellcode ansehen</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-slate-200">
+      <div class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between">
+        <p>
+          Belegfluss ist ein Portfolio-Projekt von
+          <a href="https://omarfourati.de" class="font-medium text-slate-700 hover:text-brand-700" rel="author">Omar Fourati</a>.
+        </p>
+        <nav aria-label="Rechtliches" class="flex gap-4">
+          <a href="https://omarfourati.de/de/impressum" class="hover:text-brand-700">Impressum</a>
+          <a href="https://omarfourati.de/de/datenschutz" class="hover:text-brand-700">Datenschutz</a>
+          <a href="https://github.com/omarfourati-dev/belegfluss" class="hover:text-brand-700" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </footer>
   </body>
 </html>

@@ -33,7 +33,7 @@ async function createUsers(request: APIRequestContext) {
 }
 
 async function loginAs(page: Page, email: string) {
-  await page.goto('/#/login')
+  await page.goto('/app/#/login')
   await page.getByLabel('E-Mail').fill(email)
   await page.getByLabel('Passwort').fill(PASSWORD)
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click()
@@ -69,7 +69,7 @@ test('upload, approve and book an e-invoice with three different people', async 
 
   // 2. Approver opens it and approves (a comment covers a possible duplicate warning on reruns)
   await loginAs(page, users.approver.email)
-  await page.goto(`/#/invoices/${id}`)
+  await page.goto(`/app/#/invoices/${id}`)
   await expect(page.getByText('E-Rechnung · XRechnung (UBL)')).toBeVisible()
   await expect(page.getByText('E-Rechnung – exakt gelesen, ohne KI')).toBeVisible()
   await page.getByRole('button', { name: 'Freigeben', exact: true }).click()
@@ -80,7 +80,7 @@ test('upload, approve and book an e-invoice with three different people', async 
 
   // 3. Accounting books it; the audit trail shows all three people
   await loginAs(page, users.accountant.email)
-  await page.goto(`/#/invoices/${id}`)
+  await page.goto(`/app/#/invoices/${id}`)
   await page.getByRole('button', { name: 'Als verbucht markieren' }).click()
   await expect(page.getByText('Verbucht', { exact: true }).first()).toBeVisible()
   const history = page.locator('ol')
@@ -97,7 +97,7 @@ test('the uploader cannot approve their own invoice', async ({ page, request }) 
 
   await loginAs(page, approver.email)
   const id = await uploadXRechnung(page)
-  await page.goto(`/#/invoices/${id}`)
+  await page.goto(`/app/#/invoices/${id}`)
   await page.getByRole('button', { name: 'Freigeben', exact: true }).click()
   await page.getByLabel(/Kommentar|Begründung/).fill('Selbst freigeben?')
   await page.getByRole('button', { name: 'Jetzt freigeben' }).click()

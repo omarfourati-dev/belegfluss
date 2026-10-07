@@ -1,0 +1,55 @@
+# Belegfluss
+
+> Belegfluss is an invoice inbox for small businesses: incoming invoices are uploaded, read into
+> structured data, checked automatically and taken through a four-eyes approval to booking.
+> German e-invoices (XRechnung, ZUGFeRD) are taken over exactly without AI; only plain PDFs and
+> scans are read by a language model. A portfolio project by Omar Fourati with public source code,
+> not a commercial product. The user interface is in German.
+
+- Live demo (read-only demo account on the login page): https://belegfluss.omarfourati.de/app/
+- Source code: https://github.com/omarfourati-dev/belegfluss
+- API documentation (OpenAPI): https://belegfluss.omarfourati.de/swagger-ui.html
+- Author: Omar Fourati, Full-Stack Developer - https://omarfourati.de
+
+## How an invoice is read
+
+The cheapest exact source comes first:
+
+1. E-invoice: XRechnung (UBL 2.1 and UN/CEFACT CII), ZUGFeRD and Factur-X, uploaded as XML or embedded
+   in a PDF. Parsed exactly, no AI, no cost. The XML parser is hardened against XXE.
+2. PDF with a text layer: the text goes to a language model; Spring AI returns a typed Java record
+   (supplier, invoice number, dates, net, VAT, gross, currency, IBAN).
+3. Scanned PDF: the first pages are rendered as images and read by a vision model.
+
+All fields can be corrected by hand; the audit trail lists which fields changed.
+
+## Automatic checks
+
+- Duplicate: same supplier and invoice number already exists
+- Amounts: net plus VAT does not equal gross
+- VAT rate: not one of the usual German rates (0, 7, 19 %)
+- Invalid IBAN: mod-97 check digit fails
+- IBAN changed: a known supplier suddenly gives a different IBAN (typical invoice fraud)
+
+Approving an invoice with warnings requires a comment.
+
+## Roles and approval
+
+Roles: viewer, employee (upload, correct), approver, accounting (book, CSV export), admin (users).
+Each role includes the rights of the roles below it. Four-eyes rule: neither the uploader nor the
+person who last corrected the fields may approve. Every step is recorded in an audit trail.
+Booked invoices are exported as CSV in a DATEV-like format.
+
+## Technology
+
+- Backend: Java 21, Spring Boot 3, Spring AI, Spring Security (JWT, role hierarchy), PostgreSQL,
+  Flyway, PDFBox, virtual threads, Server-Sent Events, RFC 9457 problem details
+- Frontend: Vue 3, TypeScript, Vite, Tailwind CSS
+- Quality: JUnit 5, Testcontainers, Vitest, Playwright end-to-end tests of the whole approval process
+- Operations: Docker, GitHub Actions, Caddy; login throttling against brute force
+
+## FAQ
+
+- Does every invoice need AI? No. E-invoices are read exactly from the XML. Only PDFs without
+  e-invoice data and scans use a model.
+- Is it a product I can buy? No, it is a portfolio project that shows how such a system can be built.

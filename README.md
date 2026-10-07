@@ -10,7 +10,7 @@ data and takes it through checks, a four-eyes approval and booking.
 Built with **Java 21** and **Spring Boot 3**, using **Spring AI** for structured LLM output
 and **Spring Security** (JWT) for role-based access and a four-eyes approval workflow.
 
-**Live demo:** https://belegfluss.omarfourati.de – read-only login `demo@belegfluss.app` / `demo-belegfluss`
+**Live demo:** https://belegfluss.omarfourati.de (landing page) · app: https://belegfluss.omarfourati.de/app/ – read-only login `demo@belegfluss.app` / `demo-belegfluss`
 
 ## How it works
 
@@ -95,6 +95,12 @@ and user management.
 ```bash
 cd frontend && npm install && npm run dev   # http://localhost:5173, proxies /api to :8080
 ```
+
+Two pages are built: a static **landing page** at `/` that explains the project and works without
+JavaScript, and the **app** at `/app/` (noindex). The landing page carries what search engines and
+AI assistants need: meta and Open Graph tags, JSON-LD (`SoftwareApplication`, `FAQPage`, `Person`),
+`robots.txt`, `sitemap.xml` and an [`llms.txt`](frontend/public/llms.txt) summary. Old links to
+`/#/...` are redirected to `/app/#/...`.
 
 ## Tech stack
 
@@ -184,6 +190,7 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Scanned PDFs via vision model
 - [x] Manual correction with audit trail, password change, login throttling
 - [x] Playwright end-to-end tests in CI
+- [x] Landing page with SEO (structured data, sitemap) and GEO (`llms.txt`, AI crawlers allowed)
 - [ ] Ideas: e-mail inbox import, DATEV-API export, multi-tenant setup
 
 ## Author

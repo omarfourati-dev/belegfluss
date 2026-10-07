@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition;
+}
+@utility btn-primary {
+  @apply bg-brand-700 text-white hover:bg-brand-800;
+}
+@utility btn-secondary {
+  @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+}
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}
+@utility section-title {
+  @apply text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
+}
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-widest text-brand-700 uppercase;
+}
