@@ -83,4 +83,6 @@ export const api = {
   users: () => request<User[]>('/api/users'),
   createUser: (user: { email: string; password: string; displayName: string; role: Role }) =>
     request<User>('/api/users', { method: 'POST', body: JSON.stringify(user) }),
+  setUserEnabled: (id: string, enabled: boolean) =>
+    request<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
 }

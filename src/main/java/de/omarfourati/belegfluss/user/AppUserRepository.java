@@ -15,4 +15,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     boolean existsByRole(Role role);
 
     List<AppUser> findAllByOrderByCreatedAtAsc();
+
+    boolean existsByIdAndEnabledTrue(UUID id);
 }

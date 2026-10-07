@@ -133,7 +133,8 @@ AI assistants need: meta and Open Graph tags, JSON-LD (`SoftwareApplication`, `F
 | `POST` | `/api/invoices/{id}/approve` | APPROVER |
 | `POST` | `/api/invoices/{id}/reject` | APPROVER – with reason |
 | `POST` | `/api/invoices/{id}/book` | ACCOUNTANT |
-| `GET`, `POST` | `/api/users` | ADMIN |
+| `GET`, `POST` | `/api/users` | ADMIN – list and create users |
+| `PATCH` | `/api/users/{id}` | ADMIN – disable / re-enable a user (`{"enabled": false}`) |
 
 Interactive docs: `http://localhost:8080/swagger-ui.html` – log in, then click **Authorize** and paste the token.
 
@@ -191,6 +192,7 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Manual correction with audit trail, password change, login throttling
 - [x] Playwright end-to-end tests in CI
 - [x] Landing page with SEO (structured data, sitemap) and GEO (`llms.txt`, AI crawlers allowed)
+- [x] Access on request: no open sign-up; admins create, disable and re-enable accounts (tokens of disabled users stop working at once)
 - [ ] Ideas: e-mail inbox import, DATEV-API export, multi-tenant setup
 
 ## Author

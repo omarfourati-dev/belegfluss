@@ -63,6 +63,11 @@ public class AppUser {
         this.passwordHash = newHash;
     }
 
+    /** A disabled user can no longer log in, and tokens issued before are rejected. */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public UUID getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }

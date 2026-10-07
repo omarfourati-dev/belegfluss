@@ -141,6 +141,14 @@
               },
               {
                 "@type": "Question",
+                "name": "Kann ich mich bei Belegfluss registrieren?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Nein, eine offene Registrierung gibt es bewusst nicht. Wie in einer echten Firma legt der Admin die Benutzer mit ihrer Rolle an – nur so funktioniert die Vier-Augen-Freigabe. Zum Ansehen reicht der schreibgeschützte Demo-Zugang. Wer den ganzen Ablauf mit Hochladen und Freigeben testen möchte, kann per E-Mail an info@omarfourati.de einen Zugang anfragen."
+                }
+              },
+              {
+                "@type": "Question",
                 "name": "Kann ich Belegfluss ausprobieren?",
                 "acceptedAnswer": {
                   "@type": "Answer",
@@ -191,8 +199,9 @@
               <a href="https://github.com/omarfourati-dev/belegfluss" class="btn btn-secondary" rel="noopener">Quellcode auf GitHub</a>
             </div>
             <p class="mt-4 text-sm text-slate-500">
-              Demo-Zugang mit einem Klick auf der Anmeldeseite, schreibgeschützt. Ein Portfolio-Projekt mit öffentlichem Quellcode, kein
-              kommerzielles Produkt.
+              Demo-Zugang mit einem Klick auf der Anmeldeseite, schreibgeschützt. Den ganzen Ablauf selbst testen?
+              <a href="mailto:info@omarfourati.de?subject=Belegfluss%20%E2%80%93%20Zugang%20anfragen" class="font-medium text-brand-700 underline underline-offset-2">Zugang anfragen</a>.
+              Ein Portfolio-Projekt mit öffentlichem Quellcode, kein kommerzielles Produkt.
             </p>
           </div>
 
@@ -330,6 +339,9 @@
                 Jeder Schritt – Upload, Auslesen, Korrektur, Freigabe, Ablehnung, Buchung – landet mit Person und Zeitpunkt im
                 Audit-Trail. Gebuchte Rechnungen exportiert die Buchhaltung als CSV im DATEV-ähnlichen Format.
               </p>
+              <p>
+                Eine offene Registrierung gibt es deshalb bewusst nicht: Benutzer und Rollen legt der Admin an.
+              </p>
             </div>
             <dl class="card divide-y divide-slate-100 text-sm">
               <div class="flex gap-4 p-4"><dt class="w-32 shrink-0 font-semibold text-slate-900">Betrachter</dt><dd>sieht Rechnungen und ihren Verlauf</dd></div>
@@ -430,6 +442,15 @@
               </p>
             </details>
             <details class="card p-5">
+              <summary class="cursor-pointer font-semibold text-slate-900">Kann ich mich bei Belegfluss registrieren?</summary>
+              <p class="mt-3 text-sm leading-relaxed">
+                Nein, eine offene Registrierung gibt es bewusst nicht. Wie in einer echten Firma legt der Admin die Benutzer mit
+                ihrer Rolle an – nur so funktioniert die Vier-Augen-Freigabe. Zum Ansehen reicht der schreibgeschützte
+                Demo-Zugang. Wer den ganzen Ablauf mit Hochladen und Freigeben testen möchte, kann per E-Mail an
+                <a href="mailto:info@omarfourati.de?subject=Belegfluss%20%E2%80%93%20Zugang%20anfragen" class="font-medium text-brand-700 underline underline-offset-2">info@omarfourati.de</a> einen Zugang anfragen.
+              </p>
+            </details>
+            <details class="card p-5">
               <summary class="cursor-pointer font-semibold text-slate-900">Kann ich Belegfluss ausprobieren?</summary>
               <p class="mt-3 text-sm leading-relaxed">
                 Ja. Die <a href="/app/#/login" class="font-medium text-brand-700 underline underline-offset-2">Live-Demo</a> hat
@@ -447,10 +468,14 @@
         <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 md:flex-row md:items-center">
           <div>
             <h2 class="text-2xl font-bold">Selbst ausprobieren</h2>
-            <p class="mt-2 text-brand-100">Demo-Zugang auf der Anmeldeseite, keine Registrierung nötig.</p>
+            <p class="mt-2 text-brand-100">
+              Schreibgeschützter Demo-Zugang auf der Anmeldeseite. Für den ganzen Ablauf mit Hochladen und Freigeben gibt es
+              ein eigenes Konto auf Anfrage.
+            </p>
           </div>
           <div class="flex flex-col gap-3 sm:flex-row">
             <a href="/app/#/login" class="btn bg-white text-brand-800 hover:bg-brand-50">Live-Demo öffnen</a>
+            <a href="mailto:info@omarfourati.de?subject=Belegfluss%20%E2%80%93%20Zugang%20anfragen" class="btn border border-white/40 text-white hover:bg-white/10">Zugang anfragen</a>
             <a href="https://github.com/omarfourati-dev/belegfluss" class="btn border border-white/40 text-white hover:bg-white/10" rel="noopener">Quellcode ansehen</a>
           </div>
         </div>

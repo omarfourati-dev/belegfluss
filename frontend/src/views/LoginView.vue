@@ -74,6 +74,11 @@ function useDemo() {
         <p class="mt-1">Lesezugriff ohne Upload oder Freigabe.</p>
         <button type="button" class="btn btn-secondary mt-2 w-full" :disabled="busy" @click="useDemo">Als Demo anmelden</button>
       </div>
+      <!-- No open sign-up on purpose: the admin creates users and roles, as in a real company -->
+      <p class="mt-4 text-center text-sm text-slate-500">
+        Kein Konto?
+        <a href="mailto:info@omarfourati.de?subject=Belegfluss%20%E2%80%93%20Zugang%20anfragen" class="font-medium text-brand-700 hover:text-brand-800">Zugang anfragen</a>
+      </p>
     </section>
   </div>
 </template>

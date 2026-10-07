@@ -53,3 +53,6 @@ Booked invoices are exported as CSV in a DATEV-like format.
 - Does every invoice need AI? No. E-invoices are read exactly from the XML. Only PDFs without
   e-invoice data and scans use a model.
 - Is it a product I can buy? No, it is a portfolio project that shows how such a system can be built.
+- Can I register? No, there is deliberately no open sign-up: as in a real company, the admin creates
+  users and roles. The read-only demo account is enough to look around; a full account for testing
+  upload and approval can be requested by e-mail: info@omarfourati.de

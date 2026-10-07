@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { api, ApiError } from '../lib/api'
+import { auth } from '../lib/auth'
 import { formatDate, ROLE_LABEL } from '../lib/format'
 import type { Role, User } from '../lib/types'
 
@@ -16,6 +17,18 @@ async function load() {
 }
 
 onMounted(() => void load())
+
+async function toggle(user: User) {
+  error.value = ''
+  success.value = ''
+  try {
+    const updated = await api.setUserEnabled(user.id, !user.enabled)
+    success.value = `${updated.displayName} wurde ${updated.enabled ? 'entsperrt' : 'gesperrt'}.`
+    await load()
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : 'Status konnte nicht geändert werden'
+  }
+}
 
 async function create() {
   error.value = ''
@@ -40,14 +53,27 @@ async function create() {
       <h1 class="px-5 pt-5 text-xl font-bold">Benutzer</h1>
       <table class="mt-3 w-full min-w-[480px] text-sm">
         <thead class="border-y border-slate-200 bg-slate-50 text-left text-xs text-slate-500 uppercase">
-          <tr><th class="px-5 py-2">Name</th><th class="px-5 py-2">E-Mail</th><th class="px-5 py-2">Rolle</th><th class="px-5 py-2">Seit</th></tr>
+          <tr><th class="px-5 py-2">Name</th><th class="px-5 py-2">E-Mail</th><th class="px-5 py-2">Rolle</th><th class="px-5 py-2">Seit</th><th class="px-5 py-2">Status</th></tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.id" class="border-b border-slate-100 last:border-0">
+          <tr v-for="user in users" :key="user.id" class="border-b border-slate-100 last:border-0" :class="{ 'text-slate-400': !user.enabled }">
             <td class="px-5 py-2 font-medium">{{ user.displayName }}</td>
             <td class="px-5 py-2 text-slate-600">{{ user.email }}</td>
             <td class="px-5 py-2">{{ ROLE_LABEL[user.role] }}</td>
             <td class="px-5 py-2 text-slate-500">{{ formatDate(user.createdAt) }}</td>
+            <td class="px-5 py-2">
+              <span v-if="user.email === auth.user.value?.email" class="text-xs text-slate-400">Du</span>
+              <button
+                v-else
+                type="button"
+                class="text-xs font-medium hover:underline"
+                :class="user.enabled ? 'text-rose-600' : 'text-brand-700'"
+                :aria-label="`${user.displayName} ${user.enabled ? 'sperren' : 'entsperren'}`"
+                @click="toggle(user)"
+              >
+                {{ user.enabled ? 'Sperren' : 'Entsperren' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>

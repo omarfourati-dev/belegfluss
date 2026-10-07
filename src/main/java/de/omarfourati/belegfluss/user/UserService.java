@@ -61,6 +61,22 @@ public class UserService {
         user.changePassword(passwordEncoder.encode(newPassword));
     }
 
+    /** Disables or re-enables an account. Admins cannot lock themselves out. */
+    @Transactional
+    public AppUser setEnabled(UUID userId, boolean enabled, UUID actingAdminId) {
+        if (userId.equals(actingAdminId) && !enabled) {
+            throw new CannotDisableYourselfException();
+        }
+        AppUser user = repository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        user.setEnabled(enabled);
+        return user;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isActive(UUID userId) {
+        return repository.existsByIdAndEnabledTrue(userId);
+    }
+
     @Transactional(readOnly = true)
     public List<AppUser> findAll() {
         return repository.findAllByOrderByCreatedAtAsc();

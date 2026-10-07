@@ -11,7 +11,9 @@ import de.omarfourati.belegfluss.invoice.InvalidInvoiceStateException;
 import de.omarfourati.belegfluss.invoice.InvalidUploadException;
 import de.omarfourati.belegfluss.invoice.InvoiceNotFoundException;
 import de.omarfourati.belegfluss.invoice.WarningsNotAcknowledgedException;
+import de.omarfourati.belegfluss.user.CannotDisableYourselfException;
 import de.omarfourati.belegfluss.user.EmailAlreadyUsedException;
+import de.omarfourati.belegfluss.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -77,6 +79,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(EmailAlreadyUsedException.class)
     ProblemDetail emailUsed(EmailAlreadyUsedException e) {
         return problem(HttpStatus.CONFLICT, "E-mail already used", e.getMessage());
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    ProblemDetail userNotFound(UserNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "User not found", e.getMessage());
+    }
+
+    @ExceptionHandler(CannotDisableYourselfException.class)
+    ProblemDetail cannotDisableYourself(CannotDisableYourselfException e) {
+        return problem(HttpStatus.CONFLICT, "Own account", e.getMessage());
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {
