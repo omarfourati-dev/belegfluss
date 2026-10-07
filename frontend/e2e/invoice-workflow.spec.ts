@@ -115,8 +115,10 @@ test('an admin deletes an invoice that is not booked', async ({ page, request })
   await page.goto(`/app/#/invoices/${id}`)
   await expect(page.getByText('E-Rechnung · XRechnung (UBL)')).toBeVisible()
 
-  page.once('dialog', (dialog) => void dialog.accept())
   await page.getByRole('button', { name: 'Rechnung löschen' }).click()
+  await page.getByRole('button', { name: 'Abbrechen' }).click()
+  await page.getByRole('button', { name: 'Rechnung löschen' }).click()
+  await page.getByRole('button', { name: 'Ja, löschen' }).click()
   await expect(page.getByRole('heading', { name: 'Rechnungseingang' })).toBeVisible()
 
   const gone = await request.get(`/api/invoices/${id}`, { headers: { Authorization: `Bearer ${token}` } })

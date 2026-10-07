@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,6 +32,14 @@ class PublicPagesIntegrationTest extends IntegrationTest {
         mvc.perform(get("/app/index.html"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("app fixture")));
+    }
+
+    @Test
+    void pagesAreRevalidatedSoPhonesGetNewVersions() throws Exception {
+        mvc.perform(get("/app/index.html"))
+                .andExpect(header().string("Cache-Control", "no-cache"));
+        mvc.perform(get("/"))
+                .andExpect(header().string("Cache-Control", "no-cache"));
     }
 
     @Test

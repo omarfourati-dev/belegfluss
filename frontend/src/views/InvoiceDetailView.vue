@@ -94,9 +94,10 @@ const book = () => run(() => api.book(props.id))
 const canDelete = computed(() =>
   !!invoice.value && can('ADMIN') && !['BOOKED', 'RECEIVED'].includes(invoice.value.status))
 
+// Confirmed on the page itself: in-app browsers on phones often suppress window.confirm()
+const confirmDelete = ref(false)
+
 async function remove() {
-  const name = invoice.value?.invoiceNumber ?? invoice.value?.originalFilename ?? 'diese Rechnung'
-  if (!window.confirm(`${name} mit Dokument und Verlauf endgültig löschen?`)) return
   actionError.value = ''
   busy.value = true
   try {
@@ -258,7 +259,18 @@ function saveCorrection() {
           <section v-if="canDelete && !editing" class="card space-y-3 p-5">
             <h2 class="font-semibold">Verwaltung</h2>
             <p class="text-sm text-slate-600">Löscht die Rechnung mit Dokument und Verlauf. Gebuchte Rechnungen bleiben erhalten.</p>
-            <button type="button" class="btn btn-danger w-full" :disabled="busy" @click="remove">Rechnung löschen</button>
+            <button v-if="!confirmDelete" type="button" class="btn btn-danger w-full" :disabled="busy" @click="confirmDelete = true">
+              Rechnung löschen
+            </button>
+            <div v-else class="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-3" role="alertdialog" aria-labelledby="delete-question">
+              <p id="delete-question" class="text-sm font-medium text-rose-800">
+                {{ invoice.invoiceNumber ?? invoice.originalFilename }} wirklich endgültig löschen?
+              </p>
+              <div class="flex gap-2">
+                <button type="button" class="btn btn-danger flex-1" :disabled="busy" @click="remove">Ja, löschen</button>
+                <button type="button" class="btn btn-secondary flex-1" :disabled="busy" @click="confirmDelete = false">Abbrechen</button>
+              </div>
+            </div>
             <p v-if="actionError" class="text-sm text-rose-600" role="alert">{{ actionError }}</p>
           </section>
 
