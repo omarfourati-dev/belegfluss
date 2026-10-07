@@ -14,6 +14,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     List<Invoice> findByStatusInOrderByInvoiceDateAscCreatedAtAsc(Collection<InvoiceStatus> statuses);
 
+    long countByStatus(InvoiceStatus status);
+
     @Query("""
             select count(i) > 0 from Invoice i
             where lower(i.supplierName) = lower(:supplier) and i.invoiceNumber = :number and i.id <> :id

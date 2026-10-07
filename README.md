@@ -194,6 +194,7 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Playwright end-to-end tests in CI
 - [x] Landing page with SEO (structured data, sitemap) and GEO (`llms.txt`, AI crawlers allowed)
 - [x] Admins delete invoices that are not booked (GoBD: booked invoices stay)
+- [x] Business metrics for Prometheus: invoices per status, extractions by source and outcome, logins
 - [x] Access on request: no open sign-up; admins create, disable and re-enable accounts (tokens of disabled users stop working at once)
 - [ ] Ideas: e-mail inbox import, DATEV-API export, multi-tenant setup
 

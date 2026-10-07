@@ -17,6 +17,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -39,13 +40,15 @@ public class InvoiceProcessor {
     private final EInvoiceParser eInvoiceParser;
     private final InvoiceExtractor extractor;
     private final ApplicationEventPublisher publisher;
+    private final InvoiceMetrics metrics;
     private final TransactionTemplate tx;
 
     public InvoiceProcessor(InvoiceRepository repository, InvoiceDocumentRepository documents,
                             InvoiceEventRepository events, InvoiceChecks checks, PdfTextReader pdfTextReader,
                             PdfPageRenderer pageRenderer, EInvoiceParser eInvoiceParser,
                             InvoiceExtractor extractor, ApplicationEventPublisher publisher,
-                            PlatformTransactionManager txManager) {
+                            InvoiceMetrics metrics, PlatformTransactionManager txManager) {
+        this.metrics = metrics;
         this.pageRenderer = pageRenderer;
         this.eInvoiceParser = eInvoiceParser;
         this.repository = repository;
@@ -71,6 +74,7 @@ public class InvoiceProcessor {
             return;
         }
 
+        long start = System.nanoTime();
         try {
             Result result = extract(document);
             if (result.data() == null) {
@@ -81,13 +85,16 @@ public class InvoiceProcessor {
                 invoice.applyExtraction(result.data(), result.source(), result.format());
                 invoice.setWarnings(checks.check(invoice));
             });
+            metrics.extracted(result.source(), Duration.ofNanos(System.nanoTime() - start));
             log.info("Invoice {} extracted via {}", invoiceId, result.source());
         } catch (ExtractionException e) {
+            metrics.failed("failed");
             log.warn("Invoice {} failed: {}", invoiceId, e.getMessage());
             update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, e.getMessage(),
                     invoice -> invoice.markFailed(e.getMessage()));
         } catch (RuntimeException e) {
             // Never leave an invoice stuck in RECEIVED
+            metrics.failed("error");
             log.error("Invoice {} failed unexpectedly", invoiceId, e);
             String reason = "Unexpected processing error";
             update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, reason, invoice -> invoice.markFailed(reason));

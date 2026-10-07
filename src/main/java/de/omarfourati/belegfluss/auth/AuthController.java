@@ -2,6 +2,7 @@ package de.omarfourati.belegfluss.auth;
 
 import de.omarfourati.belegfluss.user.AppUser;
 import de.omarfourati.belegfluss.user.UserService;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,8 +33,11 @@ public class AuthController {
     private final UserService userService;
     private final TokenService tokenService;
     private final LoginRateLimiter rateLimiter;
+    private final MeterRegistry meters;
 
-    public AuthController(UserService userService, TokenService tokenService, LoginRateLimiter rateLimiter) {
+    public AuthController(UserService userService, TokenService tokenService, LoginRateLimiter rateLimiter,
+                          MeterRegistry meters) {
+        this.meters = meters;
         this.userService = userService;
         this.tokenService = tokenService;
         this.rateLimiter = rateLimiter;
@@ -47,16 +51,28 @@ public class AuthController {
     public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         // behind Caddy, forward-headers-strategy turns X-Forwarded-For into the remote address
         String ip = http.getRemoteAddr();
-        rateLimiter.checkAllowed(ip, request.email());
+        try {
+            rateLimiter.checkAllowed(ip, request.email());
+        } catch (TooManyLoginAttemptsException e) {
+            countLogin("throttled");
+            throw e;
+        }
         Optional<AppUser> user = userService.authenticate(request.email(), request.password());
         if (user.isEmpty()) {
             rateLimiter.recordFailure(ip, request.email());
+            countLogin("failed");
             throw new InvalidCredentialsException();
         }
         rateLimiter.recordSuccess(ip, request.email());
+        countLogin("success");
         TokenService.IssuedToken token = tokenService.issue(user.get());
         return new LoginResponse(token.value(), "Bearer", token.expiresAt(),
                 new Me(user.get().getEmail(), user.get().getDisplayName(), List.of(user.get().getRole().name())));
+    }
+
+    /** belegfluss_logins_total{outcome}: a jump in "failed" or "throttled" means someone is guessing passwords. */
+    private void countLogin(String outcome) {
+        meters.counter("belegfluss.logins", "outcome", outcome).increment();
     }
 
     @GetMapping("/me")
