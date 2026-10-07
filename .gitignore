@@ -22,3 +22,5 @@ src/main/resources/static/
 # OS
 .DS_Store
 Thumbs.db
+test-results/
+playwright-report/

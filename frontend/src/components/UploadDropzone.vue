@@ -18,8 +18,11 @@ async function handle(files: FileList | null) {
   busy.value = true
   try {
     for (const file of Array.from(files)) {
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        error.value = `${file.name}: nur PDF-Dateien werden unterstützt`
+      const name = file.name.toLowerCase()
+      const isPdf = file.type === 'application/pdf' || name.endsWith('.pdf')
+      const isXml = file.type.includes('xml') || name.endsWith('.xml')
+      if (!isPdf && !isXml) {
+        error.value = `${file.name}: nur PDF-Rechnungen und E-Rechnungen (XML) werden unterstützt`
         continue
       }
       if (file.size > MAX_BYTES) {
@@ -44,7 +47,7 @@ async function handle(files: FileList | null) {
     :class="dragging ? 'border-brand-600 bg-brand-50' : 'border-slate-300 hover:border-brand-600'"
     role="button"
     tabindex="0"
-    aria-label="PDF-Rechnungen hochladen"
+    aria-label="Rechnungen hochladen"
     @click="input?.click()"
     @keydown.enter="input?.click()"
     @dragover.prevent="dragging = true"
@@ -55,10 +58,10 @@ async function handle(files: FileList | null) {
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
     </svg>
     <p class="text-sm font-medium text-slate-700">
-      {{ busy ? 'Wird hochgeladen …' : 'PDF-Rechnungen hierher ziehen oder klicken' }}
+      {{ busy ? 'Wird hochgeladen …' : 'Rechnungen hierher ziehen oder klicken' }}
     </p>
-    <p class="text-xs text-slate-500">Die KI liest Lieferant, Beträge, USt. und IBAN automatisch aus · max. 10 MB</p>
+    <p class="text-xs text-slate-500">PDF (auch gescannt) oder E-Rechnung (XRechnung, ZUGFeRD) · max. 10 MB</p>
     <p v-if="error" class="text-sm text-rose-600">{{ error }}</p>
-    <input ref="input" type="file" accept="application/pdf,.pdf" multiple class="hidden" @change="handle(($event.target as HTMLInputElement).files)" />
+    <input ref="input" type="file" accept="application/pdf,.pdf,application/xml,text/xml,.xml" multiple class="hidden" @change="handle(($event.target as HTMLInputElement).files)" />
   </div>
 </template>

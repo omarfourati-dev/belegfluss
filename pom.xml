@@ -13,7 +13,7 @@
 
     <groupId>de.omarfourati</groupId>
     <artifactId>belegfluss</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>belegfluss</name>
     <description>AI-powered invoice inbox for small businesses</description>
 

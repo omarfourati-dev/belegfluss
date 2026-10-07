@@ -1,5 +1,6 @@
 package de.omarfourati.belegfluss.user;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +20,13 @@ public class UserService {
 
     private final AppUserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final String demoEmail;
 
-    public UserService(AppUserRepository repository, PasswordEncoder passwordEncoder) {
+    public UserService(AppUserRepository repository, PasswordEncoder passwordEncoder,
+                       @Value("${belegfluss.demo.email:demo@belegfluss.app}") String demoEmail) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.demoEmail = demoEmail;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
@@ -42,6 +46,19 @@ public class UserService {
         String hash = user.map(AppUser::getPasswordHash).orElse(dummyHash);
         boolean matches = passwordEncoder.matches(rawPassword, hash);
         return user.filter(u -> matches && u.isEnabled());
+    }
+
+    /** Changes the caller's own password after verifying the current one. */
+    @Transactional
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        AppUser user = repository.findById(userId).orElseThrow(WrongPasswordException::new);
+        if (user.getEmail().equals(AppUser.normalize(demoEmail))) {
+            throw new DemoAccountLockedException();
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new WrongPasswordException();
+        }
+        user.changePassword(passwordEncoder.encode(newPassword));
     }
 
     @Transactional(readOnly = true)

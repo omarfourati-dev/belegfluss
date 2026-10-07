@@ -19,7 +19,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Belegfluss API")
-                        .version("1.0.0")
+                        .version("1.1.0")
                         .description("""
                                 AI-powered invoice inbox. Log in via `POST /api/auth/login`, then click **Authorize** \
                                 and paste the `accessToken`.

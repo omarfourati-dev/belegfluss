@@ -21,7 +21,11 @@ async function submit() {
     const next = typeof route.query.next === 'string' && route.query.next.startsWith('/') ? route.query.next : '/'
     await router.push(next)
   } catch (e) {
-    error.value = e instanceof ApiError && e.status === 401 ? 'E-Mail oder Passwort ist falsch.' : 'Anmeldung fehlgeschlagen.'
+    if (e instanceof ApiError && e.status === 429) {
+      error.value = 'Zu viele Fehlversuche. Bitte warte 15 Minuten und versuche es dann erneut.'
+    } else {
+      error.value = e instanceof ApiError && e.status === 401 ? 'E-Mail oder Passwort ist falsch.' : 'Anmeldung fehlgeschlagen.'
+    }
   } finally {
     busy.value = false
   }
@@ -43,7 +47,8 @@ function useDemo() {
       </div>
       <p class="text-lg text-slate-700">Rechnungseingang mit KI – vom PDF bis zur Buchung.</p>
       <ul class="mt-4 space-y-2 text-sm text-slate-600">
-        <li>✓ KI liest Lieferant, Rechnungsnummer, Beträge, USt. und IBAN aus</li>
+        <li>✓ KI liest Lieferant, Rechnungsnummer, Beträge, USt. und IBAN aus – auch aus Scans</li>
+        <li>✓ E-Rechnungen (XRechnung, ZUGFeRD) werden exakt und ohne KI übernommen</li>
         <li>✓ Automatische Prüfung auf Dubletten, Rechenfehler und geänderte Bankdaten</li>
         <li>✓ Freigabe nach dem Vier-Augen-Prinzip mit lückenloser Historie</li>
         <li>✓ Export für die Buchhaltung im DATEV-Stil</li>

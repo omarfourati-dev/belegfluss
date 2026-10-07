@@ -40,6 +40,24 @@ class AiInvoiceExtractorTest {
     }
 
     @Test
+    void scannedPagesAreSentAsImages() {
+        AtomicReference<Prompt> sent = new AtomicReference<>();
+        ChatModel model = prompt -> {
+            sent.set(prompt);
+            return reply("{\"supplierName\":\"Scan GmbH\",\"invoiceNumber\":\"S-1\",\"grossAmount\":10.0}");
+        };
+
+        ExtractedInvoice result = new AiInvoiceExtractor(ChatClient.builder(model))
+                .extractFromImages(List.of(new byte[]{1, 2, 3}, new byte[]{4, 5}));
+
+        assertThat(result.supplierName()).isEqualTo("Scan GmbH");
+        var userMessage = (org.springframework.ai.chat.messages.UserMessage) sent.get().getInstructions().stream()
+                .filter(m -> m instanceof org.springframework.ai.chat.messages.UserMessage).findFirst().orElseThrow();
+        assertThat(userMessage.getMedia()).hasSize(2)
+                .allSatisfy(m -> assertThat(m.getMimeType().toString()).isEqualTo("image/png"));
+    }
+
+    @Test
     void providerErrorBodyIsNeverExposed() {
         ChatModel failing = prompt -> {
             throw new IllegalStateException(

@@ -153,7 +153,10 @@ async function exportCsv() {
           >
             <td class="px-4 py-3">
               <div class="font-medium text-slate-900">{{ invoice.supplierName ?? invoice.originalFilename }}</div>
-              <div v-if="invoice.warnings.length" class="text-xs text-amber-600">⚠ {{ invoice.warnings.length }} Warnung(en)</div>
+              <div class="flex flex-wrap gap-x-2 text-xs">
+                <span v-if="invoice.source === 'E_INVOICE'" class="text-indigo-700">E-Rechnung</span>
+                <span v-if="invoice.warnings.length" class="text-amber-600">⚠ {{ invoice.warnings.length }} Warnung(en)</span>
+              </div>
             </td>
             <td class="px-4 py-3 text-slate-600">{{ invoice.invoiceNumber ?? '–' }}</td>
             <td class="px-4 py-3 text-slate-600">{{ formatDate(invoice.invoiceDate) }}</td>

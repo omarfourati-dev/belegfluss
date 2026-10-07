@@ -1,8 +1,12 @@
 package de.omarfourati.belegfluss.invoice;
 
+import de.omarfourati.belegfluss.extraction.EInvoice;
+import de.omarfourati.belegfluss.extraction.EInvoiceParser;
 import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
 import de.omarfourati.belegfluss.extraction.ExtractionException;
 import de.omarfourati.belegfluss.extraction.InvoiceExtractor;
+import de.omarfourati.belegfluss.extraction.NoTextLayerException;
+import de.omarfourati.belegfluss.extraction.PdfPageRenderer;
 import de.omarfourati.belegfluss.extraction.PdfTextReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +17,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -30,14 +35,19 @@ public class InvoiceProcessor {
     private final InvoiceEventRepository events;
     private final InvoiceChecks checks;
     private final PdfTextReader pdfTextReader;
+    private final PdfPageRenderer pageRenderer;
+    private final EInvoiceParser eInvoiceParser;
     private final InvoiceExtractor extractor;
     private final ApplicationEventPublisher publisher;
     private final TransactionTemplate tx;
 
     public InvoiceProcessor(InvoiceRepository repository, InvoiceDocumentRepository documents,
                             InvoiceEventRepository events, InvoiceChecks checks, PdfTextReader pdfTextReader,
+                            PdfPageRenderer pageRenderer, EInvoiceParser eInvoiceParser,
                             InvoiceExtractor extractor, ApplicationEventPublisher publisher,
                             PlatformTransactionManager txManager) {
+        this.pageRenderer = pageRenderer;
+        this.eInvoiceParser = eInvoiceParser;
         this.repository = repository;
         this.documents = documents;
         this.events = events;
@@ -55,24 +65,23 @@ public class InvoiceProcessor {
     }
 
     void process(UUID invoiceId) {
-        byte[] pdf = tx.execute(status -> documents.findById(invoiceId)
-                .map(InvoiceDocument::getContent)
-                .orElse(null));
-        if (pdf == null) {
+        InvoiceDocument document = tx.execute(status -> documents.findById(invoiceId).orElse(null));
+        if (document == null) {
             log.warn("Invoice {} disappeared before processing", invoiceId);
             return;
         }
 
         try {
-            ExtractedInvoice extracted = extractor.extract(pdfTextReader.read(pdf));
-            if (extracted == null) {
+            Result result = extract(document);
+            if (result.data() == null) {
                 throw new ExtractionException("Extractor returned no result");
             }
-            update(invoiceId, InvoiceEventType.EXTRACTED, null, invoice -> {
-                invoice.applyExtraction(extracted);
+            String note = result.format() == null ? null : "E-invoice: " + result.format();
+            update(invoiceId, InvoiceEventType.EXTRACTED, note, invoice -> {
+                invoice.applyExtraction(result.data(), result.source(), result.format());
                 invoice.setWarnings(checks.check(invoice));
             });
-            log.info("Invoice {} extracted", invoiceId);
+            log.info("Invoice {} extracted via {}", invoiceId, result.source());
         } catch (ExtractionException e) {
             log.warn("Invoice {} failed: {}", invoiceId, e.getMessage());
             update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, e.getMessage(),
@@ -83,6 +92,32 @@ public class InvoiceProcessor {
             String reason = "Unexpected processing error";
             update(invoiceId, InvoiceEventType.EXTRACTION_FAILED, reason, invoice -> invoice.markFailed(reason));
         }
+    }
+
+    /**
+     * Order of preference: structured e-invoice (exact, no AI cost), then the PDF text layer,
+     * then page images for scans. The LLM is only asked when there is no e-invoice data.
+     */
+    private Result extract(InvoiceDocument document) {
+        byte[] content = document.getContent();
+        if (InvoiceService.XML.equals(document.getContentType())) {
+            EInvoice eInvoice = eInvoiceParser.parseXml(content).orElseThrow(() -> new ExtractionException(
+                    "XML file is not a supported e-invoice (XRechnung UBL/CII, ZUGFeRD/Factur-X)"));
+            return new Result(eInvoice.data(), ExtractionSource.E_INVOICE, eInvoice.format());
+        }
+        Optional<EInvoice> embedded = eInvoiceParser.parseEmbedded(content);
+        if (embedded.isPresent()) {
+            return new Result(embedded.get().data(), ExtractionSource.E_INVOICE, embedded.get().format());
+        }
+        try {
+            return new Result(extractor.extract(pdfTextReader.read(content)), ExtractionSource.AI_TEXT, null);
+        } catch (NoTextLayerException scan) {
+            return new Result(extractor.extractFromImages(pageRenderer.renderPages(content)),
+                    ExtractionSource.AI_VISION, null);
+        }
+    }
+
+    private record Result(ExtractedInvoice data, ExtractionSource source, String format) {
     }
 
     private void update(UUID invoiceId, InvoiceEventType type, String comment, Consumer<Invoice> change) {

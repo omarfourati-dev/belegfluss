@@ -3,8 +3,9 @@
 [![CI & Deploy](https://github.com/omarfourati-dev/belegfluss/actions/workflows/deploy.yml/badge.svg)](https://github.com/omarfourati-dev/belegfluss/actions/workflows/deploy.yml)
 
 Small businesses receive supplier invoices as PDFs and still type supplier, invoice number,
-amounts and IBAN into their accounting by hand. **Belegfluss** ("document flow") takes the PDF,
-lets an LLM extract the fields as structured data and prepares them for review and approval.
+amounts and IBAN into their accounting by hand. **Belegfluss** ("document flow") takes the invoice –
+a digital PDF, a scan or a German e-invoice (XRechnung, ZUGFeRD) – extracts the fields as structured
+data and takes it through checks, a four-eyes approval and booking.
 
 Built with **Java 21** and **Spring Boot 3**, using **Spring AI** for structured LLM output
 and **Spring Security** (JWT) for role-based access and a four-eyes approval workflow.
@@ -14,19 +15,27 @@ and **Spring Security** (JWT) for role-based access and a four-eyes approval wor
 ## How it works
 
 ```
-POST /api/invoices (PDF)
+POST /api/invoices (PDF or XML)
         │
         ▼
-  store PDF in PostgreSQL ── status RECEIVED ──► 202 Accepted
+  store document in PostgreSQL ── status RECEIVED ──► 202 Accepted
         │  (after commit)
         ▼
-  @Async listener on a virtual thread
+  @Async listener on a virtual thread, cheapest exact source first:
         │
-        ├─ PDFBox: extract text layer
-        ├─ Spring AI: text ──► ExtractedInvoice (record, JSON schema)
+        ├─ e-invoice XML (XRechnung UBL/CII) or ZUGFeRD PDF attachment ──► parsed exactly, no AI
+        ├─ PDF with text layer ──► Spring AI on the text ──► ExtractedInvoice record
+        └─ scanned PDF ──► pages rendered to PNG ──► Spring AI vision ──► ExtractedInvoice record
         ▼
-  status EXTRACTED  (or FAILED with reason)
+  automatic checks ──► status EXTRACTED with warnings (or FAILED with reason)
 ```
+
+### E-invoices (XRechnung, ZUGFeRD / Factur-X)
+
+Since 2025 German businesses must be able to receive e-invoices. Belegfluss reads both EN 16931
+syntaxes – **UBL 2.1** (XRechnung) and **UN/CEFACT CII** (XRechnung CII, ZUGFeRD, Factur-X) – either
+as an uploaded XML file or embedded in a PDF. These invoices are taken over exactly and cost no AI
+tokens. The XML parser is hardened against XXE (no DTDs, no external entities).
 
 - The upload returns immediately. Extraction runs in the background after the transaction
   has committed (`@TransactionalEventListener` + `@Async`).
@@ -51,11 +60,16 @@ RECEIVED ──AI──► EXTRACTED ──approve──► APPROVED ──book�
 | `ACCOUNTANT` | book approved invoices | APPROVER |
 | `ADMIN` | create users | ACCOUNTANT |
 
-- **Four-eyes principle:** the person who uploaded an invoice cannot approve it.
+- **Four-eyes principle:** neither the uploader nor the person who last corrected the fields can
+  approve – nobody can change the IBAN and release the payment alone.
+- **Manual correction** of extracted fields (also to rescue a failed extraction); checks run again
+  and the audit trail lists which fields changed.
 - **Audit trail:** every step is stored with actor and timestamp (`GET /api/invoices/{id}/history`).
 - Stateless JWT (HS256) issued by the API itself, validated as an OAuth2 resource server;
   role hierarchy via Spring Security `RoleHierarchy`, checks with `@PreAuthorize`.
 - Passwords hashed with BCrypt; failed logins take the same time for known and unknown e-mails.
+- Login throttling: 5 failed attempts per account and IP (20 per IP) pause logins for 15 minutes (`429`).
+- Users change their own password; the public demo account is locked against changes.
 
 ## Automatic checks
 
@@ -102,12 +116,14 @@ cd frontend && npm install && npm run dev   # http://localhost:5173, proxies /ap
 |---|---|---|
 | `POST` | `/api/auth/login` | public – returns a JWT |
 | `GET` | `/api/auth/me` | any |
-| `POST` | `/api/invoices` | EMPLOYEE – upload a PDF (`multipart/form-data`, field `file`, max 10 MB) |
+| `POST` | `/api/invoices` | EMPLOYEE – upload a PDF or e-invoice XML (`multipart/form-data`, field `file`, max 10 MB) |
+| `PATCH` | `/api/invoices/{id}` | EMPLOYEE – correct extracted fields |
+| `POST` | `/api/auth/password` | any – change own password |
 | `GET` | `/api/invoices`, `/api/invoices/{id}` | VIEWER |
 | `GET` | `/api/invoices/{id}/history` | VIEWER – audit trail |
 | `GET` | `/api/invoices/events` | VIEWER – live status (Server-Sent Events) |
 | `GET` | `/api/invoices/export.csv` | ACCOUNTANT – DATEV-style CSV |
-| `GET` | `/api/invoices/{id}/document` | VIEWER – original PDF |
+| `GET` | `/api/invoices/{id}/document` | VIEWER – original PDF or XML |
 | `POST` | `/api/invoices/{id}/approve` | APPROVER |
 | `POST` | `/api/invoices/{id}/reject` | APPROVER – with reason |
 | `POST` | `/api/invoices/{id}/book` | ACCOUNTANT |
@@ -142,9 +158,14 @@ curl -H "Authorization: Bearer $TOKEN" -F "file=@rechnung.pdf" http://localhost:
 ## Tests
 
 ```bash
-./mvnw verify                 # backend: unit + integration tests
+./mvnw verify                 # backend: unit + integration tests (Testcontainers)
 cd frontend && npm test       # frontend: Vitest
+cd frontend && npm run e2e    # end-to-end: Playwright against a running stack
 ```
+
+The Playwright test runs the whole business process in a real browser – an employee uploads an
+XRechnung, an approver releases it, accounting books it – and checks the four-eyes rule. Because
+e-invoices need no AI, CI runs it against the real Docker stack without any API key.
 
 The integration tests start a real PostgreSQL with Testcontainers, use the real security
 configuration (login, JWT, roles) and mock only the LLM.
@@ -159,7 +180,11 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Vue 3 + TypeScript frontend with dashboard
 - [x] CSV / DATEV-style export
 - [x] Live demo deployment
-- [ ] Ideas: OCR for scanned PDFs, e-invoices (XRechnung / ZUGFeRD), e-mail inbox import
+- [x] E-invoices: XRechnung (UBL/CII) and ZUGFeRD / Factur-X, without AI
+- [x] Scanned PDFs via vision model
+- [x] Manual correction with audit trail, password change, login throttling
+- [x] Playwright end-to-end tests in CI
+- [ ] Ideas: e-mail inbox import, DATEV-API export, multi-tenant setup
 
 ## Author
 

@@ -1,5 +1,5 @@
 import { auth } from './auth'
-import type { Invoice, InvoiceEvent, Me, Role, User } from './types'
+import type { Invoice, InvoiceEvent, InvoiceFields, Me, Role, User } from './types'
 
 export class ApiError extends Error {
   constructor(
@@ -41,6 +41,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(response.status, title, detail)
   }
   const type = response.headers.get('Content-Type') ?? ''
+  if (response.status === 204) return undefined as T
   if (type.includes('application/json')) return (await response.json()) as T
   return (await response.blob()) as T
 }
@@ -71,6 +72,11 @@ export const api = {
   reject: (id: string, reason: string) =>
     request<Invoice>(`/api/invoices/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   book: (id: string) => request<Invoice>(`/api/invoices/${id}/book`, { method: 'POST' }),
+  correct: (id: string, fields: InvoiceFields) =>
+    request<Invoice>(`/api/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/api/auth/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
 
   exportCsv: () => request<Blob>('/api/invoices/export.csv'),
 

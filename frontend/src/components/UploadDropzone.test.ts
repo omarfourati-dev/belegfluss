@@ -15,7 +15,7 @@ describe('UploadDropzone', () => {
     await wrapper.trigger('drop', { dataTransfer: { files: fileList(new File(['x'], 'bild.png', { type: 'image/png' })) } })
 
     expect(upload).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('nur PDF-Dateien')
+    expect(wrapper.text()).toContain('nur PDF-Rechnungen und E-Rechnungen')
   })
 
   it('uploads PDFs and emits the created invoice', async () => {

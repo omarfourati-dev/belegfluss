@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -48,6 +49,12 @@ public class Invoice {
     private UUID decidedBy;
     private String decisionComment;
 
+    @Enumerated(EnumType.STRING)
+    private ExtractionSource source;
+
+    private String eInvoiceFormat;
+    private UUID lastEditedBy;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private List<InvoiceWarning> warnings = new ArrayList<>();
@@ -75,6 +82,12 @@ public class Invoice {
     }
 
     public void applyExtraction(ExtractedInvoice extracted) {
+        applyExtraction(extracted, ExtractionSource.AI_TEXT, null);
+    }
+
+    public void applyExtraction(ExtractedInvoice extracted, ExtractionSource source, String eInvoiceFormat) {
+        this.source = source;
+        this.eInvoiceFormat = eInvoiceFormat;
         this.supplierName = extracted.supplierName();
         this.invoiceNumber = extracted.invoiceNumber();
         this.invoiceDate = extracted.invoiceDate();
@@ -97,10 +110,51 @@ public class Invoice {
         this.status = InvoiceStatus.FAILED;
     }
 
-    /** Four-eyes principle: the uploader may not approve their own invoice. */
+    /**
+     * Manual correction of the extracted fields (also rescues a FAILED extraction).
+     * Returns the names of the fields that actually changed.
+     */
+    public List<String> correct(ExtractedInvoice fields, UUID editorId) {
+        if (status != InvoiceStatus.EXTRACTED && status != InvoiceStatus.FAILED) {
+            throw new InvalidInvoiceStateException(
+                    "Only invoices in status EXTRACTED or FAILED can be corrected (current: " + status + ")");
+        }
+        List<String> changed = new ArrayList<>();
+        diff(changed, "supplierName", supplierName, fields.supplierName());
+        diff(changed, "invoiceNumber", invoiceNumber, fields.invoiceNumber());
+        diff(changed, "invoiceDate", invoiceDate, fields.invoiceDate());
+        diff(changed, "dueDate", dueDate, fields.dueDate());
+        diff(changed, "netAmount", netAmount, fields.netAmount());
+        diff(changed, "vatAmount", vatAmount, fields.vatAmount());
+        diff(changed, "grossAmount", grossAmount, fields.grossAmount());
+        diff(changed, "currency", currency, fields.currency());
+        diff(changed, "iban", iban, fields.iban());
+        if (changed.isEmpty() && status == InvoiceStatus.EXTRACTED) {
+            return changed;
+        }
+        ExtractionSource previousSource = source;
+        String previousFormat = eInvoiceFormat;
+        applyExtraction(fields, previousSource, previousFormat);
+        this.lastEditedBy = editorId;
+        return changed;
+    }
+
+    private static void diff(List<String> changed, String name, Object before, Object after) {
+        boolean same = before instanceof BigDecimal b && after instanceof BigDecimal a
+                ? b.compareTo(a) == 0
+                : Objects.equals(before, after);
+        if (!same) {
+            changed.add(name);
+        }
+    }
+
+    /**
+     * Four-eyes principle: neither the uploader nor the person who last corrected the
+     * fields may approve - otherwise someone could change the IBAN and wave it through.
+     */
     public void approve(UUID approverId, String comment) {
         requireStatus(InvoiceStatus.EXTRACTED, "approved");
-        if (approverId.equals(uploadedBy)) {
+        if (approverId.equals(uploadedBy) || approverId.equals(lastEditedBy)) {
             throw new FourEyesViolationException();
         }
         if (!warnings.isEmpty() && (comment == null || comment.isBlank())) {
@@ -160,6 +214,9 @@ public class Invoice {
     public UUID getDecidedBy() { return decidedBy; }
     public String getDecisionComment() { return decisionComment; }
     public List<InvoiceWarning> getWarnings() { return List.copyOf(warnings); }
+    public ExtractionSource getSource() { return source; }
+    public String getEInvoiceFormat() { return eInvoiceFormat; }
+    public UUID getLastEditedBy() { return lastEditedBy; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

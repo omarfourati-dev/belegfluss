@@ -1,6 +1,8 @@
 package de.omarfourati.belegfluss.invoice;
 
 import de.omarfourati.belegfluss.auth.CurrentUser;
+import de.omarfourati.belegfluss.extraction.EInvoiceParser;
+import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,36 +17,52 @@ public class InvoiceService {
 
     private static final byte[] PDF_MAGIC = {'%', 'P', 'D', 'F'};
 
+    static final String PDF = "application/pdf";
+    static final String XML = "application/xml";
+
     private final InvoiceRepository repository;
     private final InvoiceDocumentRepository documents;
     private final InvoiceEventRepository events;
+    private final InvoiceChecks checks;
     private final ApplicationEventPublisher publisher;
 
     public InvoiceService(InvoiceRepository repository, InvoiceDocumentRepository documents,
-                          InvoiceEventRepository events, ApplicationEventPublisher publisher) {
+                          InvoiceEventRepository events, InvoiceChecks checks, ApplicationEventPublisher publisher) {
         this.repository = repository;
         this.documents = documents;
         this.events = events;
+        this.checks = checks;
         this.publisher = publisher;
     }
 
     /**
-     * Stores the PDF and returns immediately. Extraction runs asynchronously
+     * Stores the PDF or e-invoice XML and returns immediately. Extraction runs asynchronously
      * after the transaction has committed, see {@link InvoiceProcessor}.
      */
     @Transactional
     public Invoice receive(String originalFilename, byte[] content, CurrentUser user) {
-        if (content == null || content.length < PDF_MAGIC.length
-                || !Arrays.equals(Arrays.copyOf(content, PDF_MAGIC.length), PDF_MAGIC)) {
-            throw new InvalidUploadException("Only PDF files are supported");
-        }
+        String contentType = detectType(content);
         String filename = (originalFilename == null || originalFilename.isBlank())
-                ? "invoice.pdf" : originalFilename;
+                ? (XML.equals(contentType) ? "invoice.xml" : "invoice.pdf") : originalFilename;
         Invoice invoice = repository.save(Invoice.received(filename, user.id()));
-        documents.save(new InvoiceDocument(invoice.getId(), content));
+        documents.save(new InvoiceDocument(invoice.getId(), content, contentType));
         record(invoice.getId(), InvoiceEventType.UPLOADED, user, null);
         publisher.publishEvent(new InvoiceReceivedEvent(invoice.getId()));
         publisher.publishEvent(new InvoiceStatusChanged(invoice.getId(), invoice.getStatus()));
+        return invoice;
+    }
+
+    /** Manual correction of the fields; reruns the checks and records which fields changed. */
+    @Transactional
+    public Invoice correct(UUID id, ExtractedInvoice fields, CurrentUser user) {
+        Invoice invoice = get(id);
+        List<String> changed = invoice.correct(fields, user.id());
+        if (changed.isEmpty()) {
+            return invoice;
+        }
+        invoice.setWarnings(checks.check(invoice));
+        record(id, InvoiceEventType.CORRECTED, user, "Changed: " + String.join(", ", changed));
+        publisher.publishEvent(new InvoiceStatusChanged(id, invoice.getStatus()));
         return invoice;
     }
 
@@ -74,9 +92,19 @@ public class InvoiceService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] document(UUID id) {
-        return documents.findById(id).map(InvoiceDocument::getContent)
-                .orElseThrow(() -> new InvoiceNotFoundException(id));
+    public InvoiceDocument document(UUID id) {
+        return documents.findById(id).orElseThrow(() -> new InvoiceNotFoundException(id));
+    }
+
+    static String detectType(byte[] content) {
+        if (content != null && content.length >= PDF_MAGIC.length
+                && Arrays.equals(Arrays.copyOf(content, PDF_MAGIC.length), PDF_MAGIC)) {
+            return PDF;
+        }
+        if (content != null && content.length > 0 && EInvoiceParser.looksLikeXml(content)) {
+            return XML;
+        }
+        throw new InvalidUploadException("Only PDF invoices and e-invoices (XRechnung / ZUGFeRD XML) are supported");
     }
 
     /** Invoices ready for accounting export, oldest invoice date first. */

@@ -3,7 +3,13 @@ package de.omarfourati.belegfluss.extraction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.content.Media;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MimeTypeUtils;
+
+import java.util.List;
+import java.util.function.Supplier;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,12 +42,28 @@ public class AiInvoiceExtractor implements InvoiceExtractor {
 
     @Override
     public ExtractedInvoice extract(String invoiceText) {
+        return call(() -> chatClient.prompt()
+                .user(u -> u.text("Extract the invoice fields from this text:\n\n{text}")
+                        .param("text", invoiceText))
+                .call()
+                .entity(ExtractedInvoice.class));
+    }
+
+    @Override
+    public ExtractedInvoice extractFromImages(List<byte[]> pngPages) {
+        Media[] pages = pngPages.stream()
+                .map(png -> new Media(MimeTypeUtils.IMAGE_PNG, new ByteArrayResource(png)))
+                .toArray(Media[]::new);
+        return call(() -> chatClient.prompt()
+                .user(u -> u.text("This invoice is a scan. Extract the invoice fields from these page images.")
+                        .media(pages))
+                .call()
+                .entity(ExtractedInvoice.class));
+    }
+
+    private ExtractedInvoice call(Supplier<ExtractedInvoice> request) {
         try {
-            ExtractedInvoice result = chatClient.prompt()
-                    .user(u -> u.text("Extract the invoice fields from this text:\n\n{text}")
-                            .param("text", invoiceText))
-                    .call()
-                    .entity(ExtractedInvoice.class);
+            ExtractedInvoice result = request.get();
             if (result == null) {
                 throw new ExtractionException("Model returned no result");
             }

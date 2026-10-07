@@ -17,7 +17,7 @@ public class PdfTextReader {
         try (PDDocument document = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(document).strip();
             if (text.isEmpty()) {
-                throw new ExtractionException("PDF contains no text layer (scanned image?)");
+                throw new NoTextLayerException();
             }
             return limit(text);
         } catch (IOException e) {

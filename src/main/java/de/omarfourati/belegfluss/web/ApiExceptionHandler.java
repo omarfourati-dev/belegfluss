@@ -1,6 +1,11 @@
 package de.omarfourati.belegfluss.web;
 
 import de.omarfourati.belegfluss.auth.InvalidCredentialsException;
+import de.omarfourati.belegfluss.auth.TooManyLoginAttemptsException;
+import de.omarfourati.belegfluss.user.DemoAccountLockedException;
+import de.omarfourati.belegfluss.user.WrongPasswordException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import de.omarfourati.belegfluss.invoice.FourEyesViolationException;
 import de.omarfourati.belegfluss.invoice.InvalidInvoiceStateException;
 import de.omarfourati.belegfluss.invoice.InvalidUploadException;
@@ -20,6 +25,23 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvoiceNotFoundException.class)
     ProblemDetail notFound(InvoiceNotFoundException e) {
         return problem(HttpStatus.NOT_FOUND, "Invoice not found", e.getMessage());
+    }
+
+    @ExceptionHandler(TooManyLoginAttemptsException.class)
+    ResponseEntity<ProblemDetail> tooManyLogins(TooManyLoginAttemptsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfter().toSeconds()))
+                .body(problem(HttpStatus.TOO_MANY_REQUESTS, "Too many login attempts", e.getMessage()));
+    }
+
+    @ExceptionHandler(WrongPasswordException.class)
+    ProblemDetail wrongPassword(WrongPasswordException e) {
+        return problem(HttpStatus.BAD_REQUEST, "Wrong password", e.getMessage());
+    }
+
+    @ExceptionHandler(DemoAccountLockedException.class)
+    ProblemDetail demoLocked(DemoAccountLockedException e) {
+        return problem(HttpStatus.FORBIDDEN, "Demo account", e.getMessage());
     }
 
     @ExceptionHandler(InvalidUploadException.class)

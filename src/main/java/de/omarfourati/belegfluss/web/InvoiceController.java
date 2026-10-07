@@ -1,6 +1,8 @@
 package de.omarfourati.belegfluss.web;
 
 import de.omarfourati.belegfluss.auth.CurrentUser;
+import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
+import de.omarfourati.belegfluss.invoice.InvoiceDocument;
 import de.omarfourati.belegfluss.invoice.InvalidUploadException;
 import de.omarfourati.belegfluss.invoice.Invoice;
 import de.omarfourati.belegfluss.invoice.InvoiceService;
@@ -8,7 +10,10 @@ import de.omarfourati.belegfluss.invoice.InvoiceStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +23,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,9 +35,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -49,7 +58,7 @@ public class InvoiceController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('EMPLOYEE')")
-    @Operation(summary = "Upload a PDF invoice (EMPLOYEE)", description = "Returns 202, extraction runs in the background.")
+    @Operation(summary = "Upload an invoice (EMPLOYEE)", description = "PDF (digital or scanned) or e-invoice XML (XRechnung UBL/CII, ZUGFeRD/Factur-X). Returns 202, extraction runs in the background.")
     public ResponseEntity<InvoiceResponse> upload(@RequestParam("file") MultipartFile file,
                                                   @AuthenticationPrincipal Jwt jwt) throws IOException {
         if (file.isEmpty()) {
@@ -100,6 +109,15 @@ public class InvoiceController {
         return service.history(id).stream().map(InvoiceEventResponse::from).toList();
     }
 
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    @Operation(summary = "Correct extracted fields (EMPLOYEE)",
+            description = "Allowed while EXTRACTED or FAILED. Checks run again; the editor may not approve afterwards.")
+    public InvoiceResponse correct(@PathVariable UUID id, @Valid @RequestBody CorrectionRequest request,
+                                   @AuthenticationPrincipal Jwt jwt) {
+        return InvoiceResponse.from(service.correct(id, request.toFields(), CurrentUser.from(jwt)));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('APPROVER')")
     @Operation(summary = "Approve an extracted invoice (APPROVER, not the uploader)",
@@ -125,21 +143,43 @@ public class InvoiceController {
         return InvoiceResponse.from(service.book(id, CurrentUser.from(jwt)));
     }
 
-    @GetMapping(value = "/{id}/document", produces = MediaType.APPLICATION_PDF_VALUE)
-    @Operation(summary = "Download the original PDF")
+    @GetMapping("/{id}/document")
+    @Operation(summary = "Download the original document (PDF or e-invoice XML)")
     public ResponseEntity<byte[]> document(@PathVariable UUID id) {
         Invoice invoice = service.get(id);
+        InvoiceDocument document = service.document(id);
         ContentDisposition disposition = ContentDisposition.inline()
                 .filename(invoice.getOriginalFilename(), StandardCharsets.UTF_8).build();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(service.document(id));
+                // XML is served as text so it is shown, never interpreted, by the browser
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.parseMediaType(document.getContentType().equals("application/xml")
+                        ? "text/plain;charset=UTF-8" : document.getContentType()))
+                .body(document.getContent());
     }
 
     public record DecisionRequest(@Size(max = 500) String comment) {
     }
 
     public record RejectRequest(@NotBlank @Size(max = 500) String reason) {
+    }
+
+    public record CorrectionRequest(
+            @NotBlank @Size(max = 255) String supplierName,
+            @NotBlank @Size(max = 100) String invoiceNumber,
+            @NotNull LocalDate invoiceDate,
+            LocalDate dueDate,
+            @DecimalMin("0.00") BigDecimal netAmount,
+            @DecimalMin("0.00") BigDecimal vatAmount,
+            @NotNull @DecimalMin("0.00") BigDecimal grossAmount,
+            @NotBlank @Pattern(regexp = "[A-Z]{3}") String currency,
+            @Size(max = 42) String iban) {
+
+        ExtractedInvoice toFields() {
+            String normalizedIban = iban == null || iban.isBlank() ? null : iban.replaceAll("\\s", "").toUpperCase(Locale.ROOT);
+            return new ExtractedInvoice(supplierName.strip(), invoiceNumber.strip(), invoiceDate, dueDate,
+                    netAmount, vatAmount, grossAmount, currency, normalizedIban);
+        }
     }
 }

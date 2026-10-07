@@ -26,15 +26,18 @@ function logout() {
           <RouterLink v-if="can('ADMIN')" to="/users" class="text-slate-600 hover:text-brand-700" active-class="font-semibold text-brand-700">
             Benutzer
           </RouterLink>
+          <RouterLink to="/account" class="text-slate-600 hover:text-brand-700 sm:hidden" active-class="font-semibold text-brand-700">
+            Konto
+          </RouterLink>
           <a href="/swagger-ui.html" target="_blank" rel="noopener" class="text-slate-600 hover:text-brand-700">API</a>
         </nav>
         <div class="ml-auto flex items-center gap-3 text-sm">
-          <span class="hidden text-slate-600 sm:inline">
+          <RouterLink to="/account" class="hidden text-slate-600 hover:text-brand-700 sm:inline" title="Mein Konto">
             {{ auth.user.value?.displayName }}
             <span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
               {{ ROLE_LABEL[auth.user.value?.roles[0] ?? 'VIEWER'] }}
             </span>
-          </span>
+          </RouterLink>
           <button class="btn btn-secondary py-1.5" @click="logout">Abmelden</button>
         </div>
       </div>

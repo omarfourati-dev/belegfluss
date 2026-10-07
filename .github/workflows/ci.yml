@@ -40,3 +40,59 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t belegfluss:ci .
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Throwaway credentials for the ephemeral CI stack, masked in the logs.
+      - name: Generate test credentials
+        run: |
+          jwt=$(openssl rand -hex 32); pw=$(openssl rand -hex 16)
+          echo "::add-mask::$jwt"; echo "::add-mask::$pw"
+          {
+            echo "JWT_SECRET=$jwt"
+            echo "ADMIN_EMAIL=admin@belegfluss.test"
+            echo "ADMIN_PASSWORD=$pw"
+            echo "DEMO_ENABLED=true"
+          } > .env
+          echo "E2E_ADMIN_PASSWORD=$pw" >> "$GITHUB_ENV"
+
+      - name: Start stack (app + PostgreSQL)
+        run: |
+          docker compose --profile app up -d --build
+          for i in $(seq 1 60); do
+            curl -fs http://localhost:8080/actuator/health && exit 0
+            sleep 3
+          done
+          docker compose --profile app logs app | tail -80
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # E-invoices need no AI, so the whole workflow is tested without an API key.
+      - name: Run Playwright
+        working-directory: frontend
+        env:
+          CI: "true"
+          E2E_BASE_URL: http://localhost:8080
+          E2E_ADMIN_EMAIL: admin@belegfluss.test
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7

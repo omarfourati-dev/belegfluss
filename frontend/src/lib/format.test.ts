@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatIban, formatMoney, STATUS, WARNING_LABEL } from './format'
+import { formatDate, formatIban, formatMoney, STATUS, translateChangeComment, WARNING_LABEL } from './format'
 
 // Intl uses a narrow no-break space in some environments
 const normalize = (s: string) => s.replace(/ | /g, ' ')
@@ -17,6 +17,11 @@ describe('format', () => {
   it('formats ISO dates without timezone shift', () => {
     expect(formatDate('2026-10-01')).toBe('01.10.2026')
     expect(formatDate(null)).toBe('–')
+  })
+
+  it('translates the audit comment of a correction', () => {
+    expect(translateChangeComment('Changed: iban, grossAmount')).toBe('Geändert: IBAN, Brutto')
+    expect(translateChangeComment('E-invoice: XRechnung (UBL)')).toBe('E-invoice: XRechnung (UBL)')
   })
 
   it('groups IBANs in blocks of four', () => {

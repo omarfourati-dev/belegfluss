@@ -1,4 +1,4 @@
-import type { InvoiceStatus, Role } from './types'
+import type { ExtractionSource, InvoiceStatus, Role } from './types'
 
 export function formatMoney(value: number | null, currency: string | null = 'EUR'): string {
   if (value === null || value === undefined) return '–'
@@ -44,11 +44,37 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const EVENT_LABEL: Record<string, string> = {
   UPLOADED: 'Hochgeladen',
-  EXTRACTED: 'Von der KI ausgelesen',
+  EXTRACTED: 'Daten ausgelesen',
   EXTRACTION_FAILED: 'Auslesen fehlgeschlagen',
+  CORRECTED: 'Von Hand korrigiert',
   APPROVED: 'Freigegeben',
   REJECTED: 'Abgelehnt',
   BOOKED: 'Verbucht',
+}
+
+export const SOURCE_LABEL: Record<ExtractionSource, string> = {
+  E_INVOICE: 'E-Rechnung – exakt gelesen, ohne KI',
+  AI_TEXT: 'Von der KI aus dem PDF-Text gelesen',
+  AI_VISION: 'Von der KI aus dem Scan gelesen',
+}
+
+export const FIELD_LABEL: Record<string, string> = {
+  supplierName: 'Lieferant',
+  invoiceNumber: 'Rechnungsnummer',
+  invoiceDate: 'Rechnungsdatum',
+  dueDate: 'Fälligkeit',
+  netAmount: 'Netto',
+  vatAmount: 'USt.',
+  grossAmount: 'Brutto',
+  currency: 'Währung',
+  iban: 'IBAN',
+}
+
+/** "Changed: iban, grossAmount" from the audit trail -> "Geändert: IBAN, Brutto" */
+export function translateChangeComment(comment: string | null): string | null {
+  if (!comment || !comment.startsWith('Changed: ')) return comment
+  const fields = comment.slice('Changed: '.length).split(', ').map((f) => FIELD_LABEL[f] ?? f)
+  return `Geändert: ${fields.join(', ')}`
 }
 
 export const WARNING_LABEL: Record<string, string> = {

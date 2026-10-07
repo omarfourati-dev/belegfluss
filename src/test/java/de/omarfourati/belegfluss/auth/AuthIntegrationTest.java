@@ -98,6 +98,55 @@ class AuthIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void usersCanChangeTheirOwnPassword() throws Exception {
+        userService.create("carla@firma.de", PASSWORD, "Carla", Role.EMPLOYEE);
+        String token = login("carla@firma.de", PASSWORD);
+
+        mvc.perform(as(token, post("/api/auth/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("currentPassword", "falsch-falsch",
+                                "newPassword", "ein-neues-langes-passwort")))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Wrong password"));
+
+        mvc.perform(as(token, post("/api/auth/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("currentPassword", PASSWORD,
+                                "newPassword", "ein-neues-langes-passwort")))))
+                .andExpect(status().isNoContent());
+
+        login("carla@firma.de", "ein-neues-langes-passwort");
+    }
+
+    @Test
+    void demoAccountPasswordCannotBeChanged() throws Exception {
+        userService.create("demo@belegfluss.app", "demo-belegfluss", "Demo", Role.VIEWER);
+        String token = login("demo@belegfluss.app", "demo-belegfluss");
+
+        mvc.perform(as(token, post("/api/auth/password").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("currentPassword", "demo-belegfluss",
+                                "newPassword", "jemand-sperrt-die-demo")))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Demo account"));
+    }
+
+    @Test
+    void repeatedFailedLoginsAreThrottled() throws Exception {
+        userService.create("dora@firma.de", PASSWORD, "Dora", Role.EMPLOYEE);
+        String wrong = json.writeValueAsString(Map.of("email", "dora@firma.de", "password", "falsch-falsch"));
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/api/auth/login").with(r -> { r.setRemoteAddr("10.9.8.7"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON).content(wrong))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // even the right password is refused while the account is cooling down
+        mvc.perform(post("/api/auth/login").with(r -> { r.setRemoteAddr("10.9.8.7"); return r; })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", "dora@firma.de", "password", PASSWORD))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "900"));
+    }
+
+    @Test
     void docsAndHealthArePublic() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())

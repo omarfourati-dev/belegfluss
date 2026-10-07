@@ -1,5 +1,6 @@
 package de.omarfourati.belegfluss.web;
 
+import de.omarfourati.belegfluss.invoice.ExtractionSource;
 import de.omarfourati.belegfluss.invoice.Invoice;
 import de.omarfourati.belegfluss.invoice.InvoiceStatus;
 import de.omarfourati.belegfluss.invoice.InvoiceWarning;
@@ -26,6 +27,9 @@ public record InvoiceResponse(
         String errorMessage,
         String decisionComment,
         List<Warning> warnings,
+        ExtractionSource source,
+        String eInvoiceFormat,
+        boolean manuallyCorrected,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -47,6 +51,9 @@ public record InvoiceResponse(
                 invoice.getErrorMessage(),
                 invoice.getDecisionComment(),
                 invoice.getWarnings().stream().map(Warning::of).toList(),
+                invoice.getSource(),
+                invoice.getEInvoiceFormat(),
+                invoice.getLastEditedBy() != null,
                 invoice.getCreatedAt(),
                 invoice.getUpdatedAt());
     }

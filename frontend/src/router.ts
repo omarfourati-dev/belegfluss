@@ -16,6 +16,7 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { public: true } },
     { path: '/', name: 'invoices', component: () => import('./views/InvoicesView.vue') },
     { path: '/invoices/:id', name: 'invoice', component: () => import('./views/InvoiceDetailView.vue'), props: true },
+    { path: '/account', name: 'account', component: () => import('./views/AccountView.vue') },
     { path: '/users', name: 'users', component: () => import('./views/UsersView.vue'), meta: { role: 'ADMIN' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

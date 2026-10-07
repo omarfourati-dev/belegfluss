@@ -18,15 +18,20 @@ public class InvoiceDocument {
     @Column(nullable = false)
     private byte[] content;
 
+    @Column(nullable = false)
+    private String contentType;
+
     protected InvoiceDocument() {
         // for JPA
     }
 
-    InvoiceDocument(UUID invoiceId, byte[] content) {
+    InvoiceDocument(UUID invoiceId, byte[] content, String contentType) {
         this.invoiceId = invoiceId;
         this.content = content;
+        this.contentType = contentType;
     }
 
     public UUID getInvoiceId() { return invoiceId; }
     public byte[] getContent() { return content; }
+    public String getContentType() { return contentType; }
 }

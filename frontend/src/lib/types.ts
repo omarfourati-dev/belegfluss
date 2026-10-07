@@ -2,6 +2,8 @@ export type Role = 'VIEWER' | 'EMPLOYEE' | 'APPROVER' | 'ACCOUNTANT' | 'ADMIN'
 
 export type InvoiceStatus = 'RECEIVED' | 'EXTRACTED' | 'FAILED' | 'APPROVED' | 'REJECTED' | 'BOOKED'
 
+export type ExtractionSource = 'AI_TEXT' | 'AI_VISION' | 'E_INVOICE'
+
 export interface Warning {
   code: string
   message: string
@@ -23,8 +25,23 @@ export interface Invoice {
   errorMessage: string | null
   decisionComment: string | null
   warnings: Warning[]
+  source: ExtractionSource | null
+  eInvoiceFormat: string | null
+  manuallyCorrected: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface InvoiceFields {
+  supplierName: string
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate: string | null
+  netAmount: number | null
+  vatAmount: number | null
+  grossAmount: number
+  currency: string
+  iban: string | null
 }
 
 export interface InvoiceEvent {
