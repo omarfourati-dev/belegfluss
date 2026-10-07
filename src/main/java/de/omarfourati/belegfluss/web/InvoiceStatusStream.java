@@ -1,5 +1,6 @@
 package de.omarfourati.belegfluss.web;
 
+import de.omarfourati.belegfluss.invoice.InvoiceDeleted;
 import de.omarfourati.belegfluss.invoice.InvoiceStatusChanged;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,11 @@ public class InvoiceStatusStream {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onStatusChanged(InvoiceStatusChanged change) {
         emitters.forEach(emitter -> send(emitter, SseEmitter.event().name("invoice").data(change)));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onDeleted(InvoiceDeleted deleted) {
+        emitters.forEach(emitter -> send(emitter, SseEmitter.event().name("invoice-deleted").data(deleted)));
     }
 
     /** Comment line every 25 s keeps proxies from closing idle connections. */

@@ -173,6 +173,19 @@ public class Invoice {
         this.status = InvoiceStatus.BOOKED;
     }
 
+    /**
+     * Booked invoices are part of the accounting records and must not disappear (GoBD).
+     * Invoices still being read are left alone so the background job does not run into a missing row.
+     */
+    public void requireDeletable() {
+        if (status == InvoiceStatus.BOOKED) {
+            throw new InvalidInvoiceStateException("Booked invoices cannot be deleted");
+        }
+        if (status == InvoiceStatus.RECEIVED) {
+            throw new InvalidInvoiceStateException("The invoice is still being read, try again in a moment");
+        }
+    }
+
     private void decide(InvoiceStatus newStatus, UUID actorId, String comment) {
         this.status = newStatus;
         this.decidedBy = actorId;

@@ -3,6 +3,8 @@ package de.omarfourati.belegfluss.invoice;
 import de.omarfourati.belegfluss.auth.CurrentUser;
 import de.omarfourati.belegfluss.extraction.EInvoiceParser;
 import de.omarfourati.belegfluss.extraction.ExtractedInvoice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.util.function.Consumer;
 @Service
 public class InvoiceService {
 
+    private static final Logger log = LoggerFactory.getLogger(InvoiceService.class);
     private static final byte[] PDF_MAGIC = {'%', 'P', 'D', 'F'};
 
     static final String PDF = "application/pdf";
@@ -79,6 +82,17 @@ public class InvoiceService {
     @Transactional
     public Invoice book(UUID id, CurrentUser user) {
         return change(id, InvoiceEventType.BOOKED, user, null, Invoice::book);
+    }
+
+    /** Removes the invoice with its document and history (database cascade). Booked invoices stay. */
+    @Transactional
+    public void delete(UUID id, CurrentUser user) {
+        Invoice invoice = get(id);
+        invoice.requireDeletable();
+        repository.delete(invoice);
+        // the history goes with the invoice, so the deletion itself is kept in the log
+        log.info("Invoice {} ({}) deleted by user {}", id, invoice.getStatus(), user.id());
+        publisher.publishEvent(new InvoiceDeleted(id));
     }
 
     @Transactional(readOnly = true)

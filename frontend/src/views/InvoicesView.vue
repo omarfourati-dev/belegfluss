@@ -40,7 +40,10 @@ async function refreshOne(id: string) {
 
 onMounted(() => {
   void load()
-  unsubscribe = subscribeToStatusChanges((change) => void refreshOne(change.invoiceId))
+  unsubscribe = subscribeToStatusChanges(
+    (change) => void refreshOne(change.invoiceId),
+    (id) => (invoices.value = invoices.value.filter((i) => i.id !== id)),
+  )
 })
 onUnmounted(() => unsubscribe())
 

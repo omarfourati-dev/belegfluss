@@ -72,6 +72,7 @@ export const api = {
   reject: (id: string, reason: string) =>
     request<Invoice>(`/api/invoices/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   book: (id: string) => request<Invoice>(`/api/invoices/${id}/book`, { method: 'POST' }),
+  deleteInvoice: (id: string) => request<void>(`/api/invoices/${id}`, { method: 'DELETE' }),
   correct: (id: string, fields: InvoiceFields) =>
     request<Invoice>(`/api/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(fields) }),
 

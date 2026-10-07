@@ -103,3 +103,22 @@ test('the uploader cannot approve their own invoice', async ({ page, request }) 
   await page.getByRole('button', { name: 'Jetzt freigeben' }).click()
   await expect(page.getByRole('alert')).toContainText('Four-eyes principle')
 })
+
+test('an admin deletes an invoice that is not booked', async ({ page, request }) => {
+  const admin = { email: `admin.${run}@e2e.test`, displayName: 'Ada Admin', role: 'ADMIN' }
+  const login = await request.post('/api/auth/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } })
+  const token = (await login.json()).accessToken as string
+  await request.post('/api/users', { headers: { Authorization: `Bearer ${token}` }, data: { ...admin, password: PASSWORD } })
+
+  await loginAs(page, admin.email)
+  const id = await uploadXRechnung(page)
+  await page.goto(`/app/#/invoices/${id}`)
+  await expect(page.getByText('E-Rechnung · XRechnung (UBL)')).toBeVisible()
+
+  page.once('dialog', (dialog) => void dialog.accept())
+  await page.getByRole('button', { name: 'Rechnung löschen' }).click()
+  await expect(page.getByRole('heading', { name: 'Rechnungseingang' })).toBeVisible()
+
+  const gone = await request.get(`/api/invoices/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+  expect(gone.status()).toBe(404)
+})

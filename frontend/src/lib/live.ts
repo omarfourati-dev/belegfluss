@@ -37,7 +37,10 @@ export function parseSse(buffer: string): { messages: SseMessage[]; rest: string
  * Subscribes to live invoice status changes. EventSource cannot send an Authorization
  * header, so this reads the stream with fetch and reconnects with backoff.
  */
-export function subscribeToStatusChanges(onChange: (change: StatusChange) => void): () => void {
+export function subscribeToStatusChanges(
+  onChange: (change: StatusChange) => void,
+  onDeleted: (invoiceId: string) => void = () => {},
+): () => void {
   const controller = new AbortController()
   let retryMs = 1000
 
@@ -59,6 +62,7 @@ export function subscribeToStatusChanges(onChange: (change: StatusChange) => voi
           buffer = parsed.rest
           for (const message of parsed.messages) {
             if (message.event === 'invoice') onChange(JSON.parse(message.data) as StatusChange)
+            if (message.event === 'invoice-deleted') onDeleted((JSON.parse(message.data) as { invoiceId: string }).invoiceId)
           }
         }
       } catch {

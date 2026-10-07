@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import { api, ApiError } from '../lib/api'
 import { can } from '../lib/auth'
@@ -10,6 +11,7 @@ import { subscribeToStatusChanges } from '../lib/live'
 import type { Invoice, InvoiceEvent, InvoiceFields } from '../lib/types'
 
 const props = defineProps<{ id: string }>()
+const router = useRouter()
 
 const invoice = ref<Invoice | null>(null)
 const history = ref<InvoiceEvent[]>([])
@@ -50,9 +52,14 @@ async function loadDocument() {
 onMounted(() => {
   void load()
   void loadDocument()
-  unsubscribe = subscribeToStatusChanges((change) => {
-    if (change.invoiceId === props.id && !editing.value) void load()
-  })
+  unsubscribe = subscribeToStatusChanges(
+    (change) => {
+      if (change.invoiceId === props.id && !editing.value) void load()
+    },
+    (id) => {
+      if (id === props.id) void router.push({ name: 'invoices' })
+    },
+  )
 })
 onUnmounted(() => {
   unsubscribe()
@@ -82,6 +89,25 @@ async function run(action: () => Promise<Invoice>) {
 const approve = () => run(() => api.approve(props.id, comment.value.trim()))
 const reject = () => run(() => api.reject(props.id, comment.value.trim()))
 const book = () => run(() => api.book(props.id))
+
+// Booked invoices belong to the accounting records; invoices still being read are left alone
+const canDelete = computed(() =>
+  !!invoice.value && can('ADMIN') && !['BOOKED', 'RECEIVED'].includes(invoice.value.status))
+
+async function remove() {
+  const name = invoice.value?.invoiceNumber ?? invoice.value?.originalFilename ?? 'diese Rechnung'
+  if (!window.confirm(`${name} mit Dokument und Verlauf endgültig löschen?`)) return
+  actionError.value = ''
+  busy.value = true
+  try {
+    await api.deleteInvoice(props.id)
+    await router.push({ name: 'invoices' })
+  } catch (e) {
+    actionError.value = e instanceof ApiError ? e.message : 'Rechnung konnte nicht gelöscht werden'
+  } finally {
+    busy.value = false
+  }
+}
 
 function startEdit() {
   const i = invoice.value!
@@ -226,6 +252,13 @@ function saveCorrection() {
           <section v-if="invoice.status === 'APPROVED' && can('ACCOUNTANT')" class="card space-y-3 p-5">
             <h2 class="font-semibold">Buchhaltung</h2>
             <button class="btn btn-primary w-full" :disabled="busy" @click="book">Als verbucht markieren</button>
+            <p v-if="actionError" class="text-sm text-rose-600" role="alert">{{ actionError }}</p>
+          </section>
+
+          <section v-if="canDelete && !editing" class="card space-y-3 p-5">
+            <h2 class="font-semibold">Verwaltung</h2>
+            <p class="text-sm text-slate-600">Löscht die Rechnung mit Dokument und Verlauf. Gebuchte Rechnungen bleiben erhalten.</p>
+            <button type="button" class="btn btn-danger w-full" :disabled="busy" @click="remove">Rechnung löschen</button>
             <p v-if="actionError" class="text-sm text-rose-600" role="alert">{{ actionError }}</p>
           </section>
 

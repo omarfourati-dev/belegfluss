@@ -124,6 +124,7 @@ AI assistants need: meta and Open Graph tags, JSON-LD (`SoftwareApplication`, `F
 | `GET` | `/api/auth/me` | any |
 | `POST` | `/api/invoices` | EMPLOYEE – upload a PDF or e-invoice XML (`multipart/form-data`, field `file`, max 10 MB) |
 | `PATCH` | `/api/invoices/{id}` | EMPLOYEE – correct extracted fields |
+| `DELETE` | `/api/invoices/{id}` | ADMIN – delete with document and history (not booked invoices) |
 | `POST` | `/api/auth/password` | any – change own password |
 | `GET` | `/api/invoices`, `/api/invoices/{id}` | VIEWER |
 | `GET` | `/api/invoices/{id}/history` | VIEWER – audit trail |
@@ -192,6 +193,7 @@ configuration (login, JWT, roles) and mock only the LLM.
 - [x] Manual correction with audit trail, password change, login throttling
 - [x] Playwright end-to-end tests in CI
 - [x] Landing page with SEO (structured data, sitemap) and GEO (`llms.txt`, AI crawlers allowed)
+- [x] Admins delete invoices that are not booked (GoBD: booked invoices stay)
 - [x] Access on request: no open sign-up; admins create, disable and re-enable accounts (tokens of disabled users stop working at once)
 - [ ] Ideas: e-mail inbox import, DATEV-API export, multi-tenant setup
 
