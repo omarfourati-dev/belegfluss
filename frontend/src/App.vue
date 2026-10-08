@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import { auth, can } from './lib/auth'
 import { ROLE_LABEL } from './lib/format'
+import { pwa } from './lib/pwa'
 
 const router = useRouter()
 
@@ -13,6 +14,13 @@ function logout() {
 
 <template>
   <div class="flex min-h-screen flex-col">
+    <p v-if="pwa.offline.value" role="status" class="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
+      Keine Verbindung – Rechnungen werden geladen, sobald du wieder online bist.
+    </p>
+    <p v-if="pwa.updateReady.value" role="status" class="flex items-center justify-center gap-3 bg-brand-700 px-4 py-2 text-sm text-white">
+      Neue Version von Belegfluss verfügbar.
+      <button type="button" class="rounded bg-white px-3 py-1 font-semibold text-brand-700" @click="pwa.applyUpdate()">Neu laden</button>
+    </p>
     <header v-if="auth.loggedIn.value" class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
         <RouterLink to="/" class="flex items-center gap-2 font-semibold text-slate-900">

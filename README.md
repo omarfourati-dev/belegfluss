@@ -102,6 +102,13 @@ AI assistants need: meta and Open Graph tags, JSON-LD (`SoftwareApplication`, `F
 `robots.txt`, `sitemap.xml` and an [`llms.txt`](frontend/public/llms.txt) summary. Old links to
 `/#/...` are redirected to `/app/#/...`.
 
+The app is an **installable PWA** (manifest, icons, [service worker](frontend/public/app/sw.js) with scope `/app/`).
+The service worker caches only the app shell – the app page, the hashed files under `/assets/` and the icons –
+and never anything under `/api`, so no invoices, PDFs or tokens end up in the device cache and the live
+SSE stream is left alone. Offline the app still opens and says it has no connection. Each build stamps the
+service worker ([`scripts/stamp-sw.mjs`](frontend/scripts/stamp-sw.mjs)), so after a deploy the app offers
+"Neu laden".
+
 ## Tech stack
 
 | Area | Technology |

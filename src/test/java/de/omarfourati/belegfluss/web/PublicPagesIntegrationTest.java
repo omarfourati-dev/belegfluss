@@ -50,6 +50,20 @@ class PublicPagesIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void pwaFilesArePublicAndNeverCached() throws Exception {
+        // a cached service worker would delay every update by up to a day
+        mvc.perform(get("/app/sw.js"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-cache"))
+                .andExpect(content().contentTypeCompatibleWith("text/javascript"));
+        mvc.perform(get("/app/manifest.webmanifest"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-cache"))
+                .andExpect(content().contentTypeCompatibleWith("application/manifest+json"));
+        mvc.perform(get("/app/icons/icon-192.png")).andExpect(status().isOk());
+    }
+
+    @Test
     void otherAppFilesStillNeedALogin() throws Exception {
         mvc.perform(get("/app/secret.json")).andExpect(status().isUnauthorized());
     }

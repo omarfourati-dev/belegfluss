@@ -60,6 +60,8 @@ public class SecurityConfig {
                         // landing page, Vue app (static files), files for search engines and AI crawlers, API docs
                         .requestMatchers("/", "/index.html", "/assets/**", "/favicon.svg", "/og-image.png").permitAll()
                         .requestMatchers("/app", "/app/", "/app/index.html").permitAll()
+                        // installable app: service worker, manifest and icons (no data in them)
+                        .requestMatchers("/app/sw.js", "/app/manifest.webmanifest", "/app/icons/**").permitAll()
                         .requestMatchers("/robots.txt", "/sitemap.xml", "/llms.txt").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // health is public; prometheus is only reachable inside the Docker network (Caddy blocks it)
