@@ -41,6 +41,10 @@
       if (location.hash.startsWith('#/')) location.replace('/app/' + location.hash)
     </script>
     <link rel="stylesheet" href="/src/landing.css" />
+    <!-- Google AdSense (auto ads) - only on this public landing page, never in the app under /app/.
+         Google's certified consent message asks for consent first (see omarfourati.de/de/datenschutz). -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4072840905222883" crossorigin="anonymous"></script>
+    <script type="module" src="/src/landing-privacy.ts"></script>
 
     <script type="application/ld+json">
       {
@@ -491,6 +495,7 @@
         <nav aria-label="Rechtliches" class="flex gap-4">
           <a href="https://omarfourati.de/de/impressum" class="hover:text-brand-700">Impressum</a>
           <a href="https://omarfourati.de/de/datenschutz" class="hover:text-brand-700">Datenschutz</a>
+          <button type="button" data-privacy-settings class="hover:text-brand-700">Datenschutzeinstellungen</button>
           <a href="https://github.com/omarfourati-dev/belegfluss" class="hover:text-brand-700" rel="noopener">GitHub</a>
         </nav>
       </div>

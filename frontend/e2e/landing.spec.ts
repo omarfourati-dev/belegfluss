@@ -35,3 +35,13 @@ test('crawler files are public', async ({ request }) => {
   expect(await (await request.get('/llms.txt')).text()).toContain('# Belegfluss')
   expect((await request.get('/og-image.png')).headers()['content-type']).toBe('image/png')
 })
+
+test('ads load only on the landing page, never inside the app', async ({ page, request }) => {
+  const landing = await (await request.get('/')).text()
+  expect(landing).toContain('pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-')
+  await page.goto('/')
+  await expect(page.getByRole('button', { name: 'Datenschutzeinstellungen' })).toBeVisible()
+
+  const app = await (await request.get('/app/')).text()
+  expect(app).not.toContain('googlesyndication')
+})
